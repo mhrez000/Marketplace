@@ -1,0 +1,25 @@
+{% extends "base_app.html" %}
+{% block title %}Calendar — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<h1 class="text-2xl font-600">Calendar</h1>
+<p class="mt-1 text-sm text-navy-500">Shoots, deadlines and blocked dates. (Google Calendar sync lands in Phase 4.)</p>
+
+<div class="card mt-6 divide-y divide-navy-100/70">
+  {% for e in events %}
+  <div class="flex items-center gap-4 p-4">
+    <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl
+      {% if e.event_type == 'shoot' %}bg-teal-100 text-teal-700{% elif e.event_type == 'blocked' %}bg-beige-200 text-navy-600{% else %}bg-sky-200 text-navy-700{% endif %}">
+      <span class="font-display text-lg font-600">{{ e.start|date:"d" }}</span>
+    </div>
+    <div class="flex-1">
+      <p class="font-semibold text-navy-700">{{ e.title }}</p>
+      <p class="text-xs text-navy-400">{{ e.get_event_type_display }} · {{ e.start|date:"l, d M Y · H:i" }}</p>
+    </div>
+    {% if e.booking %}<a href="{% url 'dashboard:booking_detail' e.booking.pk %}" class="btn-ghost !py-1.5 !px-3 text-xs">View</a>{% endif %}
+  </div>
+  {% empty %}
+  <div class="p-10 text-center text-navy-400">No calendar events yet. They appear when bookings are confirmed.</div>
+  {% endfor %}
+</div>
+{% endblock %}

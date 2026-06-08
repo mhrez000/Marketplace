@@ -1,0 +1,114 @@
+{% extends "base_public.html" %}
+{% block title %}Booking — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<section class="container-content py-10">
+  <a href="{% url 'portal:home' %}" class="text-sm text-teal-600 hover:underline">← Back to my portal</a>
+
+  <div class="mt-3 flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-600">{{ booking.workspace.business_name }}</h1>
+      <p class="mt-1 text-sm text-navy-500">{{ booking.title }} · {{ booking.event_date|date:"d M Y"|default:"date TBC" }}</p>
+    </div>
+    {% include "partials/_status.html" with status=booking.status label=booking.get_status_display %}
+  </div>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-3">
+    <div class="space-y-6 lg:col-span-2">
+      <!-- Action banner -->
+      {% if booking.status == S.QUOTE_ACCEPTED and contract and not contract.signed_by_client_at %}
+      <div class="card border-l-4 border-teal-500 p-6">
+        <h2 class="text-lg">Next step: sign your contract</h2>
+        <pre class="mt-3 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-xl bg-beige-100 p-4 font-sans text-xs text-navy-600">{{ contract.body }}</pre>
+        <form method="post" class="mt-4 flex flex-wrap items-end gap-3">
+          {% csrf_token %}<input type="hidden" name="action" value="sign_contract">
+          <div class="flex-1"><label class="label">Type your full name to sign</label><input name="signature_name" class="input" placeholder="e.g. Olivia Bennett" required></div>
+          <button class="btn-accent">Sign contract</button>
+        </form>
+      </div>
+      {% elif booking.status == S.CONTRACT_SIGNED %}
+      <div class="card border-l-4 border-teal-500 p-6">
+        <h2 class="text-lg">Next step: pay your deposit</h2>
+        <p class="mt-1 text-sm text-navy-500">A deposit of <strong>${{ booking.deposit_amount|floatformat:2 }}</strong> confirms your booking.</p>
+        <form method="post" class="mt-4"><input type="hidden" name="action" value="pay_deposit">{% csrf_token %}
+          <button class="btn-accent">Pay deposit ${{ booking.deposit_amount|floatformat:2 }}</button>
+        </form>
+        <p class="mt-2 text-xs text-navy-400">🔒 Test payment gateway — no real card is charged.</p>
+      </div>
+      {% endif %}
+
+      <!-- Galleries -->
+      {% for g in galleries %}
+      <div class="card p-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg">{{ g.title }}</h2>
+          <a href="{% url 'portal:gallery_detail' g.pk %}" class="btn-accent !py-1.5 !px-4 text-xs">Open gallery</a>
+        </div>
+        <p class="mt-1 text-sm text-navy-400">Delivered {{ g.delivered_at|date:"d M Y" }}</p>
+      </div>
+      {% endfor %}
+
+      <!-- Review -->
+      {% if booking.is_complete %}
+        {% if review %}
+        <div class="card p-6">
+          <h2 class="text-lg">Your review</h2>
+          <p class="mt-1 text-amber-500">{% for _ in "x"|rjust:review.rating %}★{% endfor %}</p>
+          <p class="text-sm text-navy-500">{{ review.body }}</p>
+        </div>
+        {% else %}
+        <div class="card p-6">
+          <h2 class="text-lg">Leave a review</h2>
+          <form method="post" class="mt-3 space-y-3">{% csrf_token %}<input type="hidden" name="action" value="leave_review">
+            <div><label class="label">Rating</label>
+              <select name="rating" class="input">{% for n in "54321" %}<option value="{{ n }}">{{ n }} ★</option>{% endfor %}</select>
+            </div>
+            <div><label class="label">Title</label><input name="title" class="input" placeholder="Amazing experience!"></div>
+            <div><label class="label">Review</label><textarea name="body" rows="3" class="input !rounded-2xl"></textarea></div>
+            <button class="btn-accent">Submit review</button>
+          </form>
+        </div>
+        {% endif %}
+      {% endif %}
+
+      <!-- Messages -->
+      <div class="card p-6">
+        <h2 class="text-lg">Messages</h2>
+        <div class="mt-3 max-h-64 space-y-2 overflow-y-auto">
+          {% for m in messages_list %}
+          <div class="flex {% if m.sender == request.user %}justify-end{% endif %}">
+            <div class="max-w-[80%] rounded-2xl px-3.5 py-2 text-sm {% if m.sender == request.user %}bg-navy-700 text-white{% else %}bg-beige-100 text-navy-700{% endif %}">{{ m.body }}<span class="mt-1 block text-[10px] opacity-60">{{ m.created_at|date:"d M H:i" }}</span></div>
+          </div>
+          {% empty %}<p class="text-sm text-navy-400">No messages yet.</p>{% endfor %}
+        </div>
+        {% if thread %}
+        <form method="post" class="mt-3 flex gap-2">{% csrf_token %}<input type="hidden" name="action" value="send_message">
+          <input name="body" class="input flex-1" placeholder="Message your creative…" required><button class="btn-primary">Send</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Right: payments summary -->
+    <div class="space-y-6">
+      <div class="card p-6">
+        <h2 class="text-lg">Payment summary</h2>
+        <div class="mt-3 space-y-1.5 text-sm">
+          <div class="flex justify-between"><span class="text-navy-500">Total (incl. GST)</span><span class="font-semibold text-navy-700">${{ booking.total|floatformat:2 }}</span></div>
+        </div>
+        <div class="mt-4 space-y-2 border-t border-navy-100 pt-3">
+          {% for inv in invoices %}
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-navy-600">{{ inv.get_invoice_type_display }} <span class="text-navy-400">${{ inv.amount|floatformat:0 }}</span></span>
+            {% if inv.is_paid %}<span class="pill-verified">Paid</span>
+            {% elif inv.invoice_type == 'final' %}
+              <form method="post"><input type="hidden" name="action" value="pay_final">{% csrf_token %}<button class="btn-accent !py-1 !px-3 text-xs">Pay now</button></form>
+            {% else %}<span class="pill-beige">Due</span>{% endif %}
+          </div>
+          {% empty %}<p class="text-sm text-navy-400">No invoices yet.</p>{% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

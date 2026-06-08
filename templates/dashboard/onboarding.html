@@ -1,0 +1,17 @@
+{% extends "base_app.html" %}
+{% block title %}Get started — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<div class="mx-auto max-w-xl">
+  <div class="card p-8 text-center">
+    <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-sky-200 text-navy-700">📸</div>
+    <h1 class="mt-4 text-2xl">Welcome to {{ BRAND_NAME }}</h1>
+    <p class="mt-2 text-navy-500">You're logged in as a client. To list your work and run bookings, you'd create a creative workspace here.</p>
+    <p class="mt-4 rounded-xl bg-beige-100 p-4 text-sm text-navy-500">In this demo, creative workspaces are seeded for the test accounts. Log in as a <strong>creative test account</strong> to see the full business dashboard, or browse the marketplace as a client.</p>
+    <div class="mt-6 flex justify-center gap-3">
+      <a href="{% url 'marketplace:home' %}" class="btn-primary">Browse marketplace</a>
+      <a href="{% url 'portal:home' %}" class="btn-ghost">My portal</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

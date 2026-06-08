@@ -1,0 +1,168 @@
+{% extends "base_public.html" %}
+{% load static %}
+
+{% block title %}{{ BRAND_NAME }} — Find & book Melbourne photographers & videographers{% endblock %}
+
+{% block main %}
+
+<!-- ───────────────────────── HERO ───────────────────────── -->
+<section class="relative overflow-hidden">
+  <div class="pointer-events-none absolute -top-32 -right-24 h-96 w-96 rounded-full bg-sky-300/40 blur-3xl"></div>
+  <div class="pointer-events-none absolute top-40 -left-24 h-80 w-80 rounded-full bg-teal-200/40 blur-3xl"></div>
+
+  <div class="container-content relative pt-16 pb-12 lg:pt-24">
+    <div class="mx-auto max-w-3xl text-center">
+      <span class="pill-beige ring-1 ring-navy-100">📸 Now live in Melbourne</span>
+      <h1 class="mt-5 font-display text-4xl font-600 leading-tight text-navy-700 sm:text-5xl lg:text-6xl">
+        Find &amp; book Melbourne's best
+        <span class="text-teal-500">photographers</span> &amp; videographers
+      </h1>
+      <p class="mx-auto mt-5 max-w-2xl text-lg text-navy-500">
+        Browse real portfolios, compare real packages, check real availability — and book a
+        verified local creative with protected payments and signed contracts built in.
+      </p>
+    </div>
+
+    <!-- Search bar -->
+    <form action="{% url 'marketplace:search' %}" method="get"
+          class="mx-auto mt-9 max-w-3xl">
+      <div class="card flex flex-col gap-2 p-2.5 sm:flex-row sm:items-center sm:rounded-full">
+        <div class="flex flex-1 items-center gap-2 px-3">
+          <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5 shrink-0 text-teal-500"><path d="M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <input name="q" type="text" placeholder="Wedding photographer, cinematic…"
+                 class="w-full border-0 bg-transparent py-2.5 text-sm text-navy-800 placeholder:text-navy-300 focus:outline-none focus:ring-0">
+        </div>
+        <div class="hidden h-8 w-px bg-navy-100 sm:block"></div>
+        <div class="flex flex-1 items-center gap-2 px-3">
+          <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5 shrink-0 text-teal-500"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="1.8"/></svg>
+          <input name="location" type="text" placeholder="Suburb or city (e.g. Brunswick)"
+                 class="w-full border-0 bg-transparent py-2.5 text-sm text-navy-800 placeholder:text-navy-300 focus:outline-none focus:ring-0">
+        </div>
+        <button type="submit" class="btn-accent btn-lg sm:rounded-full">Search</button>
+      </div>
+    </form>
+
+    <p class="mt-5 text-center text-sm text-navy-400">
+      Popular:
+      {% for c in categories %}<a href="{% url 'marketplace:search' %}?q={{ c.name }}" class="font-medium text-teal-600 hover:underline">{{ c.name }}</a>{% if not forloop.last %} · {% endif %}{% endfor %}
+    </p>
+  </div>
+</section>
+
+<!-- ───────────────────────── CATEGORIES ───────────────────────── -->
+<section class="container-content py-14">
+  <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+    {% for c in categories %}
+    <a href="{% url 'marketplace:search' %}?q={{ c.name }}" class="card-hover group flex flex-col items-start gap-3 p-5">
+      <span class="grid h-11 w-11 place-items-center rounded-xl bg-sky-200 text-navy-700 transition-colors group-hover:bg-teal-500 group-hover:text-white">
+        {% include "marketplace/_icon.html" with name=c.icon %}
+      </span>
+      <div>
+        <p class="font-semibold text-navy-700">{{ c.name }}</p>
+        <p class="mt-0.5 text-xs leading-snug text-navy-400">{{ c.blurb }}</p>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ───────────────────────── FEATURED ───────────────────────── -->
+<section class="container-content py-10">
+  <div class="flex items-end justify-between">
+    <div>
+      <p class="eyebrow">Verified &amp; loved</p>
+      <h2 class="mt-2 text-3xl font-600">Featured creatives near you</h2>
+    </div>
+    <a href="{% url 'marketplace:search' %}" class="hidden text-sm font-semibold text-teal-600 hover:underline sm:inline">Browse all →</a>
+  </div>
+
+  <div class="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    {% for p in featured %}
+      {% include "marketplace/_profile_card.html" %}
+    {% empty %}
+      <p class="text-sm text-navy-400">No creatives listed yet — check back soon.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ───────────────────────── HOW IT WORKS ───────────────────────── -->
+<section class="bg-white/60 py-20 mt-12">
+  <div class="container-content">
+    <div class="text-center">
+      <p class="eyebrow">Simple &amp; safe</p>
+      <h2 class="mt-2 text-3xl font-600 sm:text-4xl">Book in three steps</h2>
+    </div>
+    <div class="mt-12 grid gap-8 md:grid-cols-3">
+      <div class="text-center">
+        <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-sky-200 text-xl font-bold text-navy-700">1</div>
+        <h3 class="mt-4 text-xl">Search &amp; compare</h3>
+        <p class="mt-2 text-sm text-navy-500">Filter by style, suburb, date and budget. Compare real portfolios and transparent packages side by side.</p>
+      </div>
+      <div class="text-center">
+        <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-sky-200 text-xl font-bold text-navy-700">2</div>
+        <h3 class="mt-4 text-xl">Request a quote</h3>
+        <p class="mt-2 text-sm text-navy-500">Message verified creatives and receive packaged quotes in-app — no reverse-auction bidding wars.</p>
+      </div>
+      <div class="text-center">
+        <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-sky-200 text-xl font-bold text-navy-700">3</div>
+        <h3 class="mt-4 text-xl">Book &amp; relax</h3>
+        <p class="mt-2 text-sm text-navy-500">Sign the contract and pay a deposit securely. Get your gallery delivered — all on one platform.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── WHY LENS / COMPARISON ───────────────────────── -->
+<section class="container-content py-20">
+  <div class="grid items-center gap-12 lg:grid-cols-2">
+    <div>
+      <p class="eyebrow">Why {{ BRAND_NAME }}</p>
+      <h2 class="mt-2 text-3xl font-600 sm:text-4xl">Not another bidding war.</h2>
+      <p class="mt-4 text-navy-500">Lead marketplaces treat photography like any other gig — race-to-the-bottom pricing and unqualified leads. {{ BRAND_NAME }} is curated, portfolio-first, and built for Australia.</p>
+      <ul class="mt-6 space-y-3">
+        <li class="flex gap-3"><span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-teal-500 text-white"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="text-sm text-navy-600">Verified profiles — <strong>ABN, insurance &amp; WWCC</strong> checked</span></li>
+        <li class="flex gap-3"><span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-teal-500 text-white"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="text-sm text-navy-600">Real availability for your actual date</span></li>
+        <li class="flex gap-3"><span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-teal-500 text-white"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="text-sm text-navy-600">Protected payments &amp; signed contracts built in</span></li>
+        <li class="flex gap-3"><span class="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-teal-500 text-white"><svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="text-sm text-navy-600">Reviews tied to real, completed bookings</span></li>
+      </ul>
+    </div>
+
+    <!-- Trust badges card -->
+    <div class="card grid grid-cols-2 gap-4 p-6 sm:p-8">
+      <div class="rounded-xl bg-beige-100 p-5 text-center">
+        <p class="font-display text-3xl font-600 text-navy-700">50+</p>
+        <p class="mt-1 text-xs text-navy-400">Verified creatives</p>
+      </div>
+      <div class="rounded-xl bg-beige-100 p-5 text-center">
+        <p class="font-display text-3xl font-600 text-navy-700">120+</p>
+        <p class="mt-1 text-xs text-navy-400">Melbourne suburbs</p>
+      </div>
+      <div class="rounded-xl bg-beige-100 p-5 text-center">
+        <p class="font-display text-3xl font-600 text-navy-700">0%</p>
+        <p class="mt-1 text-xs text-navy-400">Per-lead fees</p>
+      </div>
+      <div class="rounded-xl bg-beige-100 p-5 text-center">
+        <p class="font-display text-3xl font-600 text-navy-700">4.9★</p>
+        <p class="mt-1 text-xs text-navy-400">Avg. rating</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── DUAL CTA ───────────────────────── -->
+<section class="container-content pb-10">
+  <div class="grid gap-5 md:grid-cols-2">
+    <div class="card overflow-hidden bg-navy-700 p-8 text-white sm:p-10">
+      <h3 class="text-2xl text-white">Looking to hire?</h3>
+      <p class="mt-2 max-w-sm text-sm text-sky-200">Find a verified local photographer or videographer for your wedding, event, property or brand.</p>
+      <a href="{% url 'marketplace:search' %}" class="btn-sky mt-6">Find a creative</a>
+    </div>
+    <div class="card overflow-hidden bg-teal-500 p-8 text-white sm:p-10">
+      <h3 class="text-2xl text-white">Are you a creative?</h3>
+      <p class="mt-2 max-w-sm text-sm text-white/85">Get found by local clients and run every booking in one place. No per-lead fees, ever.</p>
+      <a href="{% url 'account_signup' %}" class="btn mt-6 bg-white text-teal-700 hover:bg-beige-100">List your work</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

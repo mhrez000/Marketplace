@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body %}
+<div x-data="{ sidebar: false }" class="min-h-full bg-beige-100">
+  <!-- Sidebar -->
+  <aside class="fixed inset-y-0 left-0 z-40 w-64 -translate-x-full transform border-r border-navy-100/70 bg-white transition-transform lg:translate-x-0"
+         :class="sidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
+    <div class="flex h-16 items-center border-b border-navy-100/70 px-5">
+      {% include "partials/_logo.html" %}
+    </div>
+    <nav class="flex flex-col gap-1 p-3">
+      {% with a=active %}
+      <a href="{% url 'dashboard:overview' %}" class="{% if a == 'overview' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='grid' %}Overview</a>
+      <a href="{% url 'dashboard:leads' %}" class="{% if a == 'leads' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='inbox' %}Leads</a>
+      <a href="{% url 'dashboard:bookings' %}" class="{% if a == 'bookings' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='calendar' %}Bookings</a>
+      <a href="{% url 'dashboard:calendar' %}" class="{% if a == 'calendar' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='calendar' %}Calendar</a>
+      <a href="{% url 'dashboard:clients' %}" class="{% if a == 'clients' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='users' %}Clients</a>
+      <div class="my-2 border-t border-navy-100/70"></div>
+      <a href="{% url 'dashboard:profile' %}" class="{% if a == 'profile' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='user' %}Profile</a>
+      {% if ws %}<a href="{% url 'marketplace:profile' ws.slug %}" class="nav-link">{% include "dashboard/_navicon.html" with name='image' %}View public page</a>{% endif %}
+      {% endwith %}
+    </nav>
+    <div class="absolute inset-x-3 bottom-3">
+      <div class="rounded-2xl bg-navy-700 p-4 text-white">
+        <p class="text-sm font-semibold">Upgrade to Pro</p>
+        <p class="mt-1 text-xs text-sky-200">Unlock contracts, payments &amp; AI drafting.</p>
+        <a href="{% url 'marketplace:pricing' %}" class="btn-sky mt-3 w-full !py-2 text-xs">See plans</a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Backdrop (mobile) -->
+  <div x-show="sidebar" x-cloak @click="sidebar = false" class="fixed inset-0 z-30 bg-navy-900/30 lg:hidden"></div>
+
+  <!-- Main column -->
+  <div class="lg:pl-64">
+    <header class="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-navy-100/70 bg-beige-100/80 px-5 backdrop-blur-md">
+      <button @click="sidebar = !sidebar" class="grid h-10 w-10 place-items-center rounded-xl text-navy-700 hover:bg-white lg:hidden" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" class="h-6 w-6"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <div class="hidden flex-1 items-center gap-2 rounded-full bg-white px-4 py-2 shadow-soft ring-1 ring-navy-100 sm:flex sm:max-w-sm">
+        <svg viewBox="0 0 24 24" fill="none" class="h-4 w-4 text-navy-300"><path d="M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <input type="text" placeholder="Search leads, clients, bookings…" class="w-full border-0 bg-transparent text-sm focus:outline-none focus:ring-0">
+      </div>
+      <div class="ml-auto flex items-center gap-3">
+        <button class="relative grid h-10 w-10 place-items-center rounded-full bg-white shadow-soft ring-1 ring-navy-100">
+          <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5 text-navy-600"><path d="M6 9a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6z" stroke="currentColor" stroke-width="1.7"/><path d="M10 19a2 2 0 004 0" stroke="currentColor" stroke-width="1.7"/></svg>
+          <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-teal-500"></span>
+        </button>
+        <div x-data="{ menu: false }" class="relative">
+          <button @click="menu = !menu" class="flex items-center gap-2 rounded-full bg-white py-1 pl-1 pr-3 shadow-soft ring-1 ring-navy-100">
+            <span class="grid h-8 w-8 place-items-center rounded-full bg-teal-500 text-sm font-bold text-white">{{ user.email|first|upper }}</span>
+            <span class="hidden text-sm font-medium text-navy-700 sm:block">{{ user.email }}</span>
+          </button>
+          <div x-show="menu" x-cloak @click.outside="menu = false" x-transition class="absolute right-0 mt-2 w-44 card p-1.5">
+            <a href="{% url 'marketplace:home' %}" class="block rounded-lg px-3 py-2 text-sm text-navy-600 hover:bg-beige-100">View site</a>
+            <form method="post" action="{% url 'account_logout' %}">{% csrf_token %}
+              <button type="submit" class="block w-full rounded-lg px-3 py-2 text-left text-sm text-navy-600 hover:bg-beige-100">Log out</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="p-5 lg:p-8">
+      {% block main %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}

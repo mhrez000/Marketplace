@@ -1,0 +1,38 @@
+{% extends "base_public.html" %}
+{% block title %}How it works — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<section class="container-content py-16">
+  <div class="mx-auto max-w-2xl text-center">
+    <p class="eyebrow">How it works</p>
+    <h1 class="mt-2 text-4xl font-600 sm:text-5xl">From search to gallery, all in one place</h1>
+    <p class="mt-4 text-navy-500">{{ BRAND_NAME }} brings the demand and the business tools together — so booking a creative (and running the job) finally feels simple.</p>
+  </div>
+
+  <div class="mt-14 grid gap-10 lg:grid-cols-2">
+    <div class="card p-8">
+      <span class="pill-sky">For clients</span>
+      <h2 class="mt-4 text-2xl">Hiring a creative</h2>
+      <ol class="mt-6 space-y-5">
+        <li class="flex gap-4"><span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy-700 text-sm font-bold text-white">1</span><div><p class="font-semibold text-navy-700">Search &amp; compare</p><p class="text-sm text-navy-500">Filter by style, suburb, date and budget. Real portfolios, transparent packages.</p></div></li>
+        <li class="flex gap-4"><span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy-700 text-sm font-bold text-white">2</span><div><p class="font-semibold text-navy-700">Request quotes</p><p class="text-sm text-navy-500">Message verified creatives and get packaged quotes in-app — no bidding wars.</p></div></li>
+        <li class="flex gap-4"><span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy-700 text-sm font-bold text-white">3</span><div><p class="font-semibold text-navy-700">Sign &amp; pay securely</p><p class="text-sm text-navy-500">Sign the contract and pay a deposit with protected payments.</p></div></li>
+        <li class="flex gap-4"><span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy-700 text-sm font-bold text-white">4</span><div><p class="font-semibold text-navy-700">Receive your gallery</p><p class="text-sm text-navy-500">View, download and favourite your photos — then rebook next time.</p></div></li>
+      </ol>
+      <a href="{% url 'marketplace:search' %}" class="btn-primary mt-8">Find a creative</a>
+    </div>
+
+    <div class="card p-8">
+      <span class="pill-verified">For creatives</span>
+      <h2 class="mt-4 text-2xl">Running your business</h2>
+      <ol class="mt-6 space-y-5">
+        <li class="flex gap-4"><span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-teal-500 text-sm font-bold text-white">1</span><div><p class="font-semibold text-navy-700">Build a bookable profile</p><p class="text-sm text-navy-500">Portfolio, packages, service area and availability in under 20 minutes.</p></div></li>
+        <li class="flex gap-4"><span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-teal-500 text-sm font-bold text-white">2</span><div><p class="font-semibold text-navy-700">Get qualified leads</p><p class="text-sm text-navy-500">Receive local enquiries — and never pay a per-lead fee.</p></div></li>
+        <li class="flex gap-4"><span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-teal-500 text-sm font-bold text-white">3</span><div><p class="font-semibold text-navy-700">Quote, contract, invoice</p><p class="text-sm text-navy-500">Send branded quotes, e-sign contracts and take deposits via Stripe.</p></div></li>
+        <li class="flex gap-4"><span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-teal-500 text-sm font-bold text-white">4</span><div><p class="font-semibold text-navy-700">Deliver &amp; get paid</p><p class="text-sm text-navy-500">Send the gallery, collect the balance, and track your whole pipeline.</p></div></li>
+      </ol>
+      <a href="{% url 'account_signup' %}" class="btn-accent mt-8">List your work</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

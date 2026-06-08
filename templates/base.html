@@ -1,0 +1,23 @@
+{% load static %}
+<!doctype html>
+<html lang="en-au" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ BRAND_NAME }}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}{{ BRAND_TAGLINE }}{% endblock %}">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+
+  <!-- HTMX + Alpine: rich interactivity without an SPA (build plan §2.1) -->
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full min-h-full">
+  {% block body %}{% endblock %}
+  {% block extra_body %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,51 @@
+{% load static %}
+<footer class="mt-24 border-t border-navy-100/70 bg-navy-700 text-sky-200">
+  <div class="container-content grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5">
+    <div class="lg:col-span-2">
+      <a href="{% url 'marketplace:home' %}" class="inline-flex items-center gap-2.5">
+        <span class="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-white">
+          <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="3.4" fill="#C8D9E6"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </span>
+        <span class="font-display text-xl font-600 text-white">{{ BRAND_NAME }}</span>
+      </a>
+      <p class="mt-4 max-w-xs text-sm text-sky-200/80">{{ BRAND_TAGLINE }} Built in Australia — no per-lead fees, ever.</p>
+    </div>
+
+    <div>
+      <h4 class="text-sm font-bold uppercase tracking-wider text-white/90">Discover</h4>
+      <ul class="mt-4 space-y-2.5 text-sm">
+        <li><a href="{% url 'marketplace:search' %}" class="hover:text-white">Wedding photographers</a></li>
+        <li><a href="{% url 'marketplace:search' %}" class="hover:text-white">Videographers</a></li>
+        <li><a href="{% url 'marketplace:search' %}" class="hover:text-white">Real estate</a></li>
+        <li><a href="{% url 'marketplace:search' %}" class="hover:text-white">Brand & content</a></li>
+      </ul>
+    </div>
+
+    <div>
+      <h4 class="text-sm font-bold uppercase tracking-wider text-white/90">Company</h4>
+      <ul class="mt-4 space-y-2.5 text-sm">
+        <li><a href="{% url 'marketplace:how_it_works' %}" class="hover:text-white">How it works</a></li>
+        <li><a href="{% url 'marketplace:pricing' %}" class="hover:text-white">Pricing</a></li>
+        <li><a href="{% url 'marketplace:for_creatives' %}" class="hover:text-white">For creatives</a></li>
+      </ul>
+    </div>
+
+    <div>
+      <h4 class="text-sm font-bold uppercase tracking-wider text-white/90">Get started</h4>
+      <ul class="mt-4 space-y-2.5 text-sm">
+        <li><a href="{% url 'account_signup' %}" class="hover:text-white">List your work</a></li>
+        <li><a href="{% url 'account_login' %}" class="hover:text-white">Log in</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="border-t border-white/10">
+    <div class="container-content flex flex-col items-center justify-between gap-3 py-6 text-xs text-sky-200/70 sm:flex-row">
+      <p>&copy; {% now "Y" %} {{ BRAND_NAME }}. Melbourne, Australia.</p>
+      <p class="flex gap-4">
+        <a href="#" class="hover:text-white">Privacy</a>
+        <a href="#" class="hover:text-white">Terms</a>
+        <a href="#" class="hover:text-white">Help</a>
+      </p>
+    </div>
+  </div>
+</footer>

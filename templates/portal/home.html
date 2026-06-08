@@ -1,0 +1,57 @@
+{% extends "base_public.html" %}
+{% block title %}My portal — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<section class="container-content py-10">
+  <h1 class="text-3xl font-600">My portal</h1>
+  <p class="mt-1 text-navy-500">Track your enquiries, quotes and bookings.</p>
+
+  <!-- Enquiries / quotes -->
+  <h2 class="mt-8 text-xl">Enquiries</h2>
+  <div class="mt-3 space-y-3">
+    {% for e in enquiries %}
+    <div class="card p-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p class="font-semibold text-navy-700">{{ e.workspace.business_name }}</p>
+          <p class="text-sm text-navy-400">{{ e.get_event_type_display }} · {{ e.event_date|date:"d M Y"|default:"date TBC" }}</p>
+        </div>
+        {% include "partials/_status.html" with status=e.status label=e.get_status_display %}
+      </div>
+      {% for q in e.quotes.all %}
+      <div class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-beige-100 p-4">
+        <div>
+          <p class="text-sm font-semibold text-navy-700">{{ q.title }}</p>
+          <p class="text-xs text-navy-400">Total ${{ q.total|floatformat:2 }} (incl. GST) · deposit ${{ q.deposit_amount|floatformat:2 }}</p>
+        </div>
+        {% if q.status == 'sent' or q.status == 'draft' %}
+          <form method="post" action="{% url 'portal:quote_accept' q.pk %}">{% csrf_token %}<button class="btn-accent">Accept quote</button></form>
+        {% else %}
+          <span class="pill-verified">{{ q.get_status_display }}</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% empty %}
+    <p class="text-sm text-navy-400">No enquiries yet. <a href="{% url 'marketplace:search' %}" class="text-teal-600">Find a creative →</a></p>
+    {% endfor %}
+  </div>
+
+  <!-- Bookings -->
+  <h2 class="mt-10 text-xl">Bookings</h2>
+  <div class="mt-3 grid gap-4 sm:grid-cols-2">
+    {% for b in bookings %}
+    <a href="{% url 'portal:booking_detail' b.pk %}" class="card-hover p-5">
+      <div class="flex items-center justify-between">
+        <p class="font-semibold text-navy-700">{{ b.workspace.business_name }}</p>
+        {% include "partials/_status.html" with status=b.status label=b.get_status_display %}
+      </div>
+      <p class="mt-1 text-sm text-navy-400">{{ b.title }}</p>
+      <p class="mt-2 text-sm text-navy-500">{{ b.event_date|date:"d M Y"|default:"date TBC" }} · ${{ b.total|floatformat:0 }}</p>
+    </a>
+    {% empty %}
+    <p class="text-sm text-navy-400">No bookings yet — accept a quote to create one.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

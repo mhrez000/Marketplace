@@ -1,0 +1,22 @@
+{% extends "base_public.html" %}
+{% block title %}Log in — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<section class="container-content flex justify-center py-16">
+  <div class="auth-card card w-full max-w-md p-8">
+    <h1 class="text-2xl">Welcome back</h1>
+    <p class="mt-1 text-sm text-navy-500">Log in to manage your bookings and pipeline.</p>
+
+    <form method="post" action="{% url 'account_login' %}" class="mt-6">
+      {% csrf_token %}
+      {{ form.as_p }}
+      {% if redirect_field_value %}<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">{% endif %}
+      <button type="submit" class="btn-primary mt-2 w-full">Log in</button>
+    </form>
+
+    <p class="mt-6 text-center text-sm text-navy-500">
+      New here? <a href="{% url 'account_signup' %}" class="font-semibold text-teal-600 hover:underline">Create an account</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

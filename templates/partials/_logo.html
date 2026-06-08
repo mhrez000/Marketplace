@@ -1,0 +1,11 @@
+{% load static %}
+<a href="{% url 'marketplace:home' %}" class="inline-flex items-center gap-2.5 group">
+  <span class="grid h-9 w-9 place-items-center rounded-xl bg-navy-700 text-white shadow-soft transition-transform group-hover:scale-105">
+    <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/>
+      <circle cx="12" cy="12" r="3.4" fill="#C8D9E6"/>
+      <path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+  </span>
+  <span class="font-display text-xl font-600 tracking-tight text-navy-700">{{ BRAND_NAME }}</span>
+</a>

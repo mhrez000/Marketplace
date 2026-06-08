@@ -1,0 +1,13 @@
+{
+  "name": "lens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lens — photographer/videographer marketplace + business platform (AU)",
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/src/input.css -o ./static/css/app.css --minify",
+    "watch:css": "tailwindcss -i ./static/src/input.css -o ./static/css/app.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}

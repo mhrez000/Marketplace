@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block body %}
+  {% include "partials/_header.html" %}
+
+  {% if messages %}
+    <div class="container-content mt-4 space-y-2">
+      {% for message in messages %}
+        <div class="rounded-xl bg-white px-4 py-3 text-sm text-navy-700 shadow-soft ring-1 ring-navy-100">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <main>
+    {% block main %}{% endblock %}
+  </main>
+
+  {% include "partials/_footer.html" %}
+{% endblock %}

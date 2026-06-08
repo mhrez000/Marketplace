@@ -1,0 +1,12 @@
+{% comment %}Booking status badge. Expects `status` (value) and `label`.{% endcomment %}
+{% if status == "completed" or status == "final_paid" or status == "deposit_paid" or status == "confirmed" %}
+  <span class="pill bg-teal-100 text-teal-700">{{ label }}</span>
+{% elif status == "delivered" or status == "contract_signed" %}
+  <span class="pill bg-sky-200 text-navy-700">{{ label }}</span>
+{% elif status == "cancelled" or status == "refunded" %}
+  <span class="pill bg-red-100 text-red-600">{{ label }}</span>
+{% elif status == "editing" or status == "shoot_completed" or status == "planning" %}
+  <span class="pill bg-amber-100 text-amber-700">{{ label }}</span>
+{% else %}
+  <span class="pill bg-beige-200 text-navy-600">{{ label }}</span>
+{% endif %}

@@ -1,0 +1,27 @@
+{% extends "base_app.html" %}
+{% block title %}Clients — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<h1 class="text-2xl font-600">Clients</h1>
+<p class="mt-1 text-sm text-navy-500">Your CRM — everyone who's enquired or booked.</p>
+
+<div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {% for c in clients %}
+  <div class="card p-5">
+    <div class="flex items-center gap-3">
+      <span class="grid h-11 w-11 place-items-center rounded-full bg-teal-500 text-sm font-bold text-white">{{ c.name|first|upper }}</span>
+      <div>
+        <p class="font-semibold text-navy-700">{{ c.name }}</p>
+        <p class="text-xs text-navy-400">{{ c.email }}</p>
+      </div>
+    </div>
+    <div class="mt-4 flex items-center justify-between text-sm">
+      <span class="pill-beige">{{ c.lead_source }}</span>
+      <span class="text-navy-500">LTV <strong class="text-navy-700">${{ c.lifetime_value|floatformat:0 }}</strong></span>
+    </div>
+  </div>
+  {% empty %}
+  <p class="text-sm text-navy-400">No clients yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

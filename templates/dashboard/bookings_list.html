@@ -1,0 +1,40 @@
+{% extends "base_app.html" %}
+{% block title %}Bookings — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<h1 class="text-2xl font-600">Bookings</h1>
+<p class="mt-1 text-sm text-navy-500">Every booking and where it sits in the pipeline.</p>
+
+<div class="mt-4 flex flex-wrap gap-2">
+  <a href="{% url 'dashboard:bookings' %}" class="pill ring-1 ring-navy-100 {% if not current_status %}bg-navy-700 text-white{% else %}bg-white text-navy-600{% endif %}">All</a>
+  {% for val, label in statuses %}
+    <a href="?status={{ val }}" class="pill ring-1 ring-navy-100 {% if current_status == val %}bg-navy-700 text-white{% else %}bg-white text-navy-600 hover:bg-beige-100{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+<div class="card mt-5 overflow-hidden">
+  <table class="w-full text-left text-sm">
+    <thead class="bg-beige-100">
+      <tr class="text-xs uppercase tracking-wide text-navy-400">
+        <th class="px-5 py-3 font-semibold">Booking</th><th class="px-5 py-3 font-semibold">Client</th>
+        <th class="px-5 py-3 font-semibold">Event date</th><th class="px-5 py-3 font-semibold">Total</th>
+        <th class="px-5 py-3 font-semibold">Status</th><th class="px-5 py-3"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-navy-100/70">
+      {% for b in bookings %}
+      <tr class="hover:bg-beige-100/50">
+        <td class="px-5 py-3 font-medium text-navy-700">{{ b.title }}</td>
+        <td class="px-5 py-3 text-navy-500">{{ b.client.get_full_name|default:b.client.email }}</td>
+        <td class="px-5 py-3 text-navy-500">{{ b.event_date|date:"d M Y"|default:"—" }}</td>
+        <td class="px-5 py-3 font-semibold text-navy-700">${{ b.total|floatformat:0 }}</td>
+        <td class="px-5 py-3">{% include "partials/_status.html" with status=b.status label=b.get_status_display %}</td>
+        <td class="px-5 py-3 text-right"><a href="{% url 'dashboard:booking_detail' b.pk %}" class="btn-ghost !py-1.5 !px-3 text-xs">Manage</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="px-5 py-10 text-center text-navy-400">No bookings yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

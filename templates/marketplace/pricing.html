@@ -1,0 +1,33 @@
+{% extends "base_public.html" %}
+{% block title %}Pricing — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<section class="container-content py-16">
+  <div class="mx-auto max-w-2xl text-center">
+    <p class="eyebrow">Pricing</p>
+    <h1 class="mt-2 text-4xl font-600 sm:text-5xl">Simple plans. No per-lead fees.</h1>
+    <p class="mt-4 text-navy-500">Subscribe to run your business — your first booking usually pays for the whole year. Clients always browse and book for free.</p>
+  </div>
+
+  <div class="mt-14 grid gap-6 lg:grid-cols-3">
+    {% for p in plans %}
+    <div class="card relative flex flex-col p-7 {% if p.featured %}ring-2 ring-teal-500{% endif %}">
+      {% if p.featured %}<span class="absolute -top-3 left-1/2 -translate-x-1/2 pill bg-teal-500 text-white">Most popular</span>{% endif %}
+      <h3 class="text-xl">{{ p.name }}</h3>
+      <p class="mt-1 text-sm text-navy-400">{{ p.for }}</p>
+      <p class="mt-5">
+        <span class="font-display text-5xl font-600 text-navy-700">${{ p.price }}</span>
+        <span class="text-sm text-navy-400">/ {{ p.cadence }}</span>
+      </p>
+      <ul class="mt-6 flex-1 space-y-3">
+        {% for feature in p.features %}
+        <li class="flex gap-2.5 text-sm text-navy-600"><svg viewBox="0 0 24 24" class="mt-0.5 h-4 w-4 shrink-0 text-teal-500" fill="none"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ feature }}</li>
+        {% endfor %}
+      </ul>
+      <a href="{% url 'account_signup' %}" class="{% if p.featured %}btn-accent{% else %}btn-ghost{% endif %} mt-8 w-full">Get started</a>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="mt-8 text-center text-xs text-navy-400">Prices in AUD, indicative. A thin payment-protection fee applies to on-platform transactions. GST handled on invoices.</p>
+</section>
+{% endblock %}

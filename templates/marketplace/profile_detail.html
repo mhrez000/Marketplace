@@ -1,0 +1,137 @@
+{% extends "base_public.html" %}
+{% block title %}{{ workspace.business_name }} — {{ BRAND_NAME }}{% endblock %}
+{% block meta_description %}{{ profile.headline }} · {{ profile.location_label }}. Book {{ workspace.business_name }} on {{ BRAND_NAME }}.{% endblock %}
+
+{% block main %}
+<!-- Cover -->
+<section class="relative h-56 overflow-hidden bg-gradient-to-br {% if profile.accent == 'navy' %}from-navy-600 to-navy-800{% elif profile.accent == 'teal' %}from-teal-400 to-teal-600{% else %}from-sky-300 to-teal-500{% endif %} sm:h-72">
+  {% if profile.cover_image %}<img src="{{ profile.cover_image.url }}" class="h-full w-full object-cover" alt="">{% else %}
+  <div class="absolute inset-0 opacity-20" style="background-image:radial-gradient(circle at 25% 30%, white 1px, transparent 1px);background-size:22px 22px;"></div>{% endif %}
+</section>
+
+<section class="container-content -mt-16 pb-16">
+  <div class="grid gap-8 lg:grid-cols-3">
+    <!-- Left: main -->
+    <div class="lg:col-span-2">
+      <div class="card p-6 sm:p-8">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-3xl font-600">{{ workspace.business_name }}</h1>
+              {% if workspace.is_verified %}<span class="pill-verified">✓ Verified</span>{% endif %}
+            </div>
+            <p class="mt-1 text-navy-500">{{ profile.headline }}</p>
+            <p class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-navy-400">
+              <span class="inline-flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z" stroke="currentColor" stroke-width="1.7"/></svg>{{ profile.location_label }}</span>
+              {% if avg_rating %}<span class="inline-flex items-center gap-1 font-semibold text-navy-700"><svg viewBox="0 0 24 24" class="h-4 w-4 text-amber-400" fill="currentColor"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"/></svg>{{ avg_rating|floatformat:1 }} ({{ review_count }})</span>{% endif %}
+              <span>Responds in ~{{ profile.response_time_hours }}h</span>
+            </p>
+          </div>
+          <a href="#enquire" class="btn-accent">Request a quote</a>
+        </div>
+
+        {% if profile.style_list %}
+        <div class="mt-5 flex flex-wrap gap-2">
+          {% for s in profile.style_list %}<span class="pill-sky">{{ s }}</span>{% endfor %}
+        </div>
+        {% endif %}
+
+        <p class="mt-6 whitespace-pre-line text-navy-600">{{ profile.bio }}</p>
+
+        {% if profile.equipment %}<p class="mt-4 text-sm text-navy-400"><strong class="text-navy-600">Equipment:</strong> {{ profile.equipment }}</p>{% endif %}
+        <p class="mt-1 text-sm text-navy-400"><strong class="text-navy-600">Languages:</strong> {{ profile.languages }}</p>
+      </div>
+
+      <!-- Portfolio grid (placeholder tiles) -->
+      <div class="mt-6">
+        <h2 class="text-xl">Portfolio</h2>
+        <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {% for i in "123456" %}
+          <div class="aspect-square rounded-xl bg-gradient-to-br {% cycle 'from-navy-500 to-navy-700' 'from-teal-400 to-teal-600' 'from-sky-300 to-teal-400' %}">
+            <div class="h-full w-full rounded-xl opacity-20" style="background-image:radial-gradient(circle at 30% 30%, white 1px, transparent 1px);background-size:16px 16px;"></div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Reviews -->
+      {% if reviews %}
+      <div class="mt-8">
+        <h2 class="text-xl">Reviews</h2>
+        <div class="mt-3 space-y-3">
+          {% for r in reviews %}
+          <div class="card p-5">
+            <div class="flex items-center justify-between">
+              <p class="font-semibold text-navy-700">{{ r.client.get_full_name|default:r.client.email }}</p>
+              <span class="inline-flex items-center gap-1 text-sm font-semibold">{% for _ in "x"|rjust:r.rating %}★{% endfor %}</span>
+            </div>
+            {% if r.title %}<p class="mt-1 font-medium text-navy-600">{{ r.title }}</p>{% endif %}
+            <p class="mt-1 text-sm text-navy-500">{{ r.body }}</p>
+            {% if r.verified %}<span class="pill-verified mt-2">✓ Verified booking</span>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Right: packages + enquiry -->
+    <div class="space-y-6 lg:sticky lg:top-20 lg:self-start">
+      <div class="card p-6">
+        <h2 class="text-lg">Packages</h2>
+        <div class="mt-4 space-y-3">
+          {% for pkg in packages %}
+          <div class="rounded-xl border border-navy-100 p-4">
+            <div class="flex items-center justify-between">
+              <p class="font-semibold text-navy-700">{{ pkg.name }}</p>
+              <p class="font-display text-lg font-600 text-teal-600">${{ pkg.base_price|floatformat:0 }}</p>
+            </div>
+            {% if pkg.description %}<p class="mt-1 text-sm text-navy-400">{{ pkg.description }}</p>{% endif %}
+            {% if pkg.inclusion_list %}<ul class="mt-2 space-y-1">{% for inc in pkg.inclusion_list %}<li class="flex gap-2 text-xs text-navy-500"><span class="text-teal-500">✓</span>{{ inc }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+          {% empty %}
+          <p class="text-sm text-navy-400">Contact for a custom quote.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Enquiry form -->
+      <div id="enquire" class="card p-6">
+        <h2 class="text-lg">Request a quote</h2>
+        {% if user.is_authenticated %}
+        <form method="post" action="{% url 'marketplace:enquire' workspace.slug %}" class="mt-4 space-y-3">
+          {% csrf_token %}
+          <div>
+            <label class="label">Event type</label>
+            <select name="event_type" class="input">
+              {% for c in categories %}<option value="{{ c.slug }}" {% if c.slug == profile.primary_category %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="label">Event date</label>
+            <input type="date" name="event_date" class="input">
+          </div>
+          <div>
+            <label class="label">Location</label>
+            <input type="text" name="location" placeholder="Suburb / venue" class="input">
+          </div>
+          <div>
+            <label class="label">Budget (optional)</label>
+            <input type="text" name="budget_band" placeholder="e.g. $2,000–$3,000" class="input">
+          </div>
+          <div>
+            <label class="label">Message</label>
+            <textarea name="message" rows="3" class="input !rounded-2xl" placeholder="Tell them about your event…"></textarea>
+          </div>
+          <button type="submit" class="btn-accent w-full">Send enquiry</button>
+        </form>
+        {% else %}
+        <p class="mt-3 text-sm text-navy-500">Log in to send an enquiry and get a quote.</p>
+        <a href="{% url 'account_login' %}?next={{ request.path }}" class="btn-primary mt-4 w-full">Log in to enquire</a>
+        <a href="{% url 'account_signup' %}" class="btn-ghost mt-2 w-full">Create an account</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

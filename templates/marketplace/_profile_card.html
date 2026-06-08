@@ -1,0 +1,31 @@
+{% comment %}Expects `p` = CreativeProfile (annotated with avg_rating, review_count).{% endcomment %}
+<a href="{% url 'marketplace:profile' p.workspace.slug %}" class="card-hover group overflow-hidden">
+  <div class="relative aspect-[4/3] overflow-hidden bg-gradient-to-br
+    {% if p.accent == 'navy' %}from-navy-600 to-navy-800{% elif p.accent == 'teal' %}from-teal-400 to-teal-600{% else %}from-sky-300 to-teal-400{% endif %}">
+    {% if p.cover_image %}
+      <img src="{{ p.cover_image.url }}" alt="{{ p.workspace.business_name }}" class="h-full w-full object-cover">
+    {% else %}
+      <div class="absolute inset-0 opacity-20" style="background-image:radial-gradient(circle at 30% 30%, white 1px, transparent 1px);background-size:18px 18px;"></div>
+    {% endif %}
+    {% if p.workspace.is_verified %}
+      <span class="absolute left-3 top-3 pill bg-white/95 text-teal-700"><svg viewBox="0 0 24 24" fill="none" class="h-3.5 w-3.5"><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/></svg>Verified</span>
+    {% endif %}
+    {% if p.starting_price %}<span class="absolute right-3 top-3 pill bg-navy-900/70 text-white">from ${{ p.starting_price|floatformat:0 }}</span>{% endif %}
+  </div>
+  <div class="p-4">
+    <div class="flex items-center justify-between">
+      <p class="font-semibold text-navy-700 group-hover:text-teal-600">{{ p.workspace.business_name }}</p>
+      {% if p.avg_rating %}
+      <span class="inline-flex items-center gap-1 text-sm font-semibold text-navy-700">
+        <svg viewBox="0 0 24 24" class="h-4 w-4 text-amber-400" fill="currentColor"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"/></svg>
+        {{ p.avg_rating|floatformat:1 }}
+      </span>
+      {% endif %}
+    </div>
+    <p class="mt-1 text-sm text-navy-400">{{ p.headline|default:p.get_primary_category_display }}</p>
+    <p class="mt-2 flex items-center gap-1.5 text-xs text-navy-400">
+      <svg viewBox="0 0 24 24" fill="none" class="h-3.5 w-3.5"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z" stroke="currentColor" stroke-width="1.8"/></svg>
+      {{ p.location_label }}{% if p.review_count %} · {{ p.review_count }} review{{ p.review_count|pluralize }}{% endif %}
+    </p>
+  </div>
+</a>

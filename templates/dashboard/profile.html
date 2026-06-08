@@ -1,0 +1,44 @@
+{% extends "base_app.html" %}
+{% block title %}Profile — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<div class="flex items-center justify-between">
+  <h1 class="text-2xl font-600">Profile</h1>
+  <a href="{% url 'marketplace:profile' ws.slug %}" class="btn-ghost">View public page →</a>
+</div>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-3">
+  <div class="card p-6 lg:col-span-2">
+    {% if profile %}
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      <div><label class="label">Business name</label><input class="input bg-beige-100" value="{{ ws.business_name }}" disabled></div>
+      <div><label class="label">Headline</label><input name="headline" class="input" value="{{ profile.headline }}"></div>
+      <div><label class="label">Bio</label><textarea name="bio" rows="5" class="input !rounded-2xl">{{ profile.bio }}</textarea></div>
+      <div><label class="label">Style tags (comma separated)</label><input name="styles" class="input" value="{{ profile.styles }}"></div>
+      <div><label class="label">Starting price ($)</label><input name="starting_price" type="number" step="0.01" class="input" value="{{ profile.starting_price }}"></div>
+      <button class="btn-accent">Save changes</button>
+    </form>
+    {% else %}
+    <p class="text-navy-500">No profile yet.</p>
+    {% endif %}
+  </div>
+
+  <div class="space-y-6">
+    <div class="card p-6">
+      <h2 class="text-lg">Status</h2>
+      <div class="mt-3 space-y-2 text-sm">
+        <div class="flex items-center justify-between"><span class="text-navy-500">Published</span>{% if ws.is_published %}<span class="pill-verified">Live</span>{% else %}<span class="pill-beige">Pending</span>{% endif %}</div>
+        <div class="flex items-center justify-between"><span class="text-navy-500">Verified</span>{% if ws.is_verified %}<span class="pill-verified">✓ Verified</span>{% else %}<span class="pill-beige">Not yet</span>{% endif %}</div>
+        <div class="flex items-center justify-between"><span class="text-navy-500">Plan</span><span class="pill-sky">{{ ws.subscription.get_plan_display|default:"Free" }}</span></div>
+      </div>
+    </div>
+    <div class="card p-6">
+      <h2 class="text-lg">Packages</h2>
+      {% for s in ws.services.all %}{% for p in s.packages.all %}
+      <div class="mt-2 flex justify-between text-sm"><span class="text-navy-600">{{ p.name }}</span><span class="font-semibold text-navy-700">${{ p.base_price|floatformat:0 }}</span></div>
+      {% endfor %}{% empty %}<p class="mt-2 text-sm text-navy-400">No packages yet.</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

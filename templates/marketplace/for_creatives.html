@@ -1,0 +1,28 @@
+{% extends "base_public.html" %}
+{% block title %}For creatives — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<section class="container-content py-16">
+  <div class="grid items-center gap-12 lg:grid-cols-2">
+    <div>
+      <p class="eyebrow">For photographers &amp; videographers</p>
+      <h1 class="mt-2 text-4xl font-600 sm:text-5xl">Get found. Get booked. <span class="text-teal-500">Get paid.</span></h1>
+      <p class="mt-4 text-navy-500">One Australian-built platform to win local clients and run every booking — quotes, contracts, payments and galleries. No per-lead fees, ever.</p>
+      <div class="mt-7 flex flex-wrap gap-3">
+        <a href="{% url 'account_signup' %}" class="btn-accent btn-lg">List your work free</a>
+        <a href="{% url 'marketplace:pricing' %}" class="btn-ghost btn-lg">See pricing</a>
+      </div>
+      <p class="mt-4 text-xs text-navy-400">Founding members: free Pro for 6–12 months + verified badge + top placement.</p>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      {% with c1="Qualified local leads" c2="All-in-one back office" c3="Protected payments" c4="Your own mini-website" %}
+      <div class="card p-6"><div class="grid h-10 w-10 place-items-center rounded-xl bg-sky-200 text-navy-700">🎯</div><h3 class="mt-3 text-lg">Qualified local leads</h3><p class="mt-1 text-sm text-navy-500">Real enquiries from your area — never a per-lead fee.</p></div>
+      <div class="card p-6"><div class="grid h-10 w-10 place-items-center rounded-xl bg-sky-200 text-navy-700">🗂️</div><h3 class="mt-3 text-lg">All-in-one back office</h3><p class="mt-1 text-sm text-navy-500">CRM, calendar, quotes, contracts and invoices together.</p></div>
+      <div class="card p-6"><div class="grid h-10 w-10 place-items-center rounded-xl bg-sky-200 text-navy-700">🔒</div><h3 class="mt-3 text-lg">Protected payments</h3><p class="mt-1 text-sm text-navy-500">Deposits and balances via Stripe, with GST handled.</p></div>
+      <div class="card p-6"><div class="grid h-10 w-10 place-items-center rounded-xl bg-sky-200 text-navy-700">🌐</div><h3 class="mt-3 text-lg">Mini-website</h3><p class="mt-1 text-sm text-navy-500">A polished, bookable profile that ranks in local search.</p></div>
+      {% endwith %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base_app.html" %}
+{% block title %}Overview — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-600">Welcome back 👋</h1>
+    <p class="mt-1 text-sm text-navy-500">{{ ws.business_name }}{% if ws.is_verified %} · <span class="text-teal-600">Verified</span>{% endif %}</p>
+  </div>
+  <a href="{% url 'dashboard:leads' %}" class="btn-accent">View leads</a>
+</div>
+
+<div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  {% for s in stats %}
+  <div class="card p-5">
+    <p class="text-sm text-navy-400">{{ s.label }}</p>
+    <div class="mt-2 flex items-end justify-between">
+      <p class="font-display text-3xl font-600 text-navy-700">{{ s.value }}</p>
+      <span class="pill bg-teal-100 text-teal-700">{{ s.delta }}</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="mt-6 grid gap-5 lg:grid-cols-3">
+  <div class="card p-5 lg:col-span-2">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg">Recent leads</h2>
+      <a href="{% url 'dashboard:leads' %}" class="text-sm font-semibold text-teal-600 hover:underline">View all →</a>
+    </div>
+    <div class="mt-4 overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead>
+          <tr class="border-b border-navy-100 text-xs uppercase tracking-wide text-navy-400">
+            <th class="pb-3 font-semibold">Client</th><th class="pb-3 font-semibold">Type</th>
+            <th class="pb-3 font-semibold">Date</th><th class="pb-3 font-semibold">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-navy-100/70">
+          {% for e in leads %}
+          <tr class="hover:bg-beige-100/60">
+            <td class="py-3"><a href="{% url 'dashboard:lead_detail' e.pk %}" class="font-medium text-navy-700 hover:text-teal-600">{{ e.client.get_full_name|default:e.client.email }}</a></td>
+            <td class="py-3 text-navy-500">{{ e.get_event_type_display }}</td>
+            <td class="py-3 text-navy-500">{{ e.event_date|date:"d M Y"|default:"—" }}</td>
+            <td class="py-3">{% include "partials/_status.html" with status=e.status label=e.get_status_display %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="py-6 text-center text-navy-400">No leads yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card p-5">
+    <h2 class="text-lg">Upcoming shoots</h2>
+    <div class="mt-4 space-y-3">
+      {% for b in upcoming %}
+      <a href="{% url 'dashboard:booking_detail' b.pk %}" class="block rounded-xl bg-beige-100 p-3 hover:bg-beige-200">
+        <p class="text-sm font-semibold text-navy-700">{{ b.title }}</p>
+        <p class="text-xs text-navy-400">{{ b.event_date|date:"l, d M Y" }} · {{ b.location|default:"TBC" }}</p>
+      </a>
+      {% empty %}
+      <p class="text-sm text-navy-400">No confirmed shoots scheduled.</p>
+      {% endfor %}
+    </div>
+
+    <div class="mt-6 rounded-2xl bg-beige-100 p-4">
+      <p class="text-sm font-semibold text-navy-700">Profile completeness</p>
+      <div class="mt-2 h-2 rounded-full bg-white"><div class="h-2 rounded-full bg-teal-500" style="width:{{ profile_pct }}%"></div></div>
+      <p class="mt-2 text-xs text-navy-400">{{ profile_pct }}% complete · <a href="{% url 'dashboard:profile' %}" class="text-teal-600">edit profile</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}

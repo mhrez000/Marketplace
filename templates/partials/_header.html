@@ -1,0 +1,48 @@
+{% load static %}
+<header x-data="{ open: false }" class="sticky top-0 z-40 border-b border-navy-100/70 bg-beige-100/80 backdrop-blur-md">
+  <div class="container-content flex h-16 items-center justify-between">
+    {% include "partials/_logo.html" %}
+
+    <nav class="hidden items-center gap-1 md:flex">
+      <a href="{% url 'marketplace:search' %}" class="rounded-full px-3.5 py-2 text-sm font-medium text-navy-600 hover:text-navy-900">Find creatives</a>
+      <a href="{% url 'marketplace:how_it_works' %}" class="rounded-full px-3.5 py-2 text-sm font-medium text-navy-600 hover:text-navy-900">How it works</a>
+      <a href="{% url 'marketplace:pricing' %}" class="rounded-full px-3.5 py-2 text-sm font-medium text-navy-600 hover:text-navy-900">Pricing</a>
+      <a href="{% url 'marketplace:for_creatives' %}" class="rounded-full px-3.5 py-2 text-sm font-medium text-navy-600 hover:text-navy-900">For creatives</a>
+    </nav>
+
+    <div class="hidden items-center gap-2 md:flex">
+      {% if user.is_authenticated %}
+        <a href="{% url 'portal:home' %}" class="rounded-full px-3.5 py-2 text-sm font-medium text-navy-600 hover:text-navy-900">My portal</a>
+        <a href="{% url 'dashboard:overview' %}" class="btn-ghost">Dashboard</a>
+        <form method="post" action="{% url 'account_logout' %}">{% csrf_token %}
+          <button class="btn-primary" type="submit">Log out</button>
+        </form>
+      {% else %}
+        <a href="{% url 'account_login' %}" class="rounded-full px-3.5 py-2 text-sm font-semibold text-navy-700 hover:text-navy-900">Log in</a>
+        <a href="{% url 'account_signup' %}" class="btn-primary">List your work</a>
+      {% endif %}
+    </div>
+
+    <button @click="open = !open" class="md:hidden grid h-10 w-10 place-items-center rounded-xl text-navy-700 hover:bg-white" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" class="h-6 w-6"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+
+  <!-- Mobile menu -->
+  <div x-show="open" x-cloak x-transition class="md:hidden border-t border-navy-100/70 bg-beige-100">
+    <div class="container-content flex flex-col gap-1 py-4">
+      <a href="{% url 'marketplace:search' %}" class="nav-link">Find creatives</a>
+      <a href="{% url 'marketplace:how_it_works' %}" class="nav-link">How it works</a>
+      <a href="{% url 'marketplace:pricing' %}" class="nav-link">Pricing</a>
+      <a href="{% url 'marketplace:for_creatives' %}" class="nav-link">For creatives</a>
+      <div class="mt-2 flex gap-2">
+        {% if user.is_authenticated %}
+          <a href="{% url 'dashboard:overview' %}" class="btn-ghost flex-1">Dashboard</a>
+        {% else %}
+          <a href="{% url 'account_login' %}" class="btn-ghost flex-1">Log in</a>
+          <a href="{% url 'account_signup' %}" class="btn-primary flex-1">List your work</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</header>

@@ -1,0 +1,46 @@
+{% extends "base_public.html" %}
+
+{% block title %}Search creatives — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<section class="container-content py-8">
+  <!-- Search bar -->
+  <form action="{% url 'marketplace:search' %}" method="get" class="card flex flex-col gap-2 p-2.5 sm:flex-row sm:items-center sm:rounded-full">
+    <div class="flex flex-1 items-center gap-2 px-3">
+      <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5 shrink-0 text-teal-500"><path d="M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <input name="q" value="{{ query }}" type="text" placeholder="Service or style…" class="w-full border-0 bg-transparent py-2.5 text-sm focus:outline-none focus:ring-0">
+    </div>
+    <div class="hidden h-8 w-px bg-navy-100 sm:block"></div>
+    <div class="flex flex-1 items-center gap-2 px-3">
+      <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5 shrink-0 text-teal-500"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z" stroke="currentColor" stroke-width="1.8"/></svg>
+      <input name="location" value="{{ location }}" type="text" placeholder="Suburb or city" class="w-full border-0 bg-transparent py-2.5 text-sm focus:outline-none focus:ring-0">
+    </div>
+    <button type="submit" class="btn-accent sm:rounded-full">Search</button>
+  </form>
+
+  <!-- Filter chips -->
+  <div class="mt-5 flex flex-wrap gap-2">
+    {% for c in categories %}
+      <a href="?q={{ c.name }}" class="pill ring-1 ring-navy-100 {% if query == c.name %}bg-navy-700 text-white{% else %}bg-white text-navy-600 hover:bg-beige-100{% endif %}">{{ c.name }}</a>
+    {% endfor %}
+  </div>
+
+  <div class="mt-6 flex items-center justify-between">
+    <p class="text-sm text-navy-500">
+      {% if query or location %}<strong class="text-navy-700">{{ count }}</strong> result{{ count|pluralize }} for <strong class="text-navy-700">{{ query }}{% if location %} in {{ location }}{% endif %}</strong>{% else %}<strong class="text-navy-700">{{ count }}</strong> verified creative{{ count|pluralize }}{% endif %}
+    </p>
+  </div>
+
+  <!-- Results grid -->
+  <div class="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    {% for p in results %}
+      {% include "marketplace/_profile_card.html" %}
+    {% empty %}
+      <div class="card col-span-full p-10 text-center">
+        <p class="text-navy-500">No creatives match yet. Try a broader search.</p>
+        <a href="{% url 'marketplace:search' %}" class="btn-ghost mt-4">Clear filters</a>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

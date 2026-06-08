@@ -1,0 +1,103 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-beige-100 text-navy-800 font-sans antialiased;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display text-navy-700;
+  }
+  ::selection {
+    @apply bg-teal-500 text-white;
+  }
+}
+
+@layer components {
+  .container-content {
+    @apply mx-auto w-full max-w-content px-5 sm:px-6 lg:px-8;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 focus-visible:ring-offset-2;
+  }
+  .btn-primary {
+    @apply btn bg-navy-700 text-white shadow-soft hover:bg-navy-800 hover:shadow-cardhover;
+  }
+  .btn-accent {
+    @apply btn bg-teal-500 text-white shadow-soft hover:bg-teal-600;
+  }
+  .btn-ghost {
+    @apply btn bg-white text-navy-700 ring-1 ring-inset ring-navy-100 hover:bg-beige-100 hover:ring-navy-200;
+  }
+  .btn-sky {
+    @apply btn bg-sky-300 text-navy-800 hover:bg-sky-400;
+  }
+  .btn-lg {
+    @apply px-7 py-3.5 text-base;
+  }
+
+  /* Cards */
+  .card {
+    @apply rounded-2xl bg-white shadow-card ring-1 ring-navy-100/60;
+  }
+  .card-hover {
+    @apply card transition-all duration-300 hover:-translate-y-1 hover:shadow-cardhover;
+  }
+
+  /* Pills / badges */
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold;
+  }
+  .pill-verified {
+    @apply pill bg-teal-100 text-teal-700;
+  }
+  .pill-sky {
+    @apply pill bg-sky-200 text-navy-700;
+  }
+  .pill-beige {
+    @apply pill bg-beige-200 text-navy-700;
+  }
+
+  /* Inputs */
+  .input {
+    @apply w-full rounded-full border-0 bg-white px-4 py-3 text-sm text-navy-800 shadow-soft ring-1 ring-inset ring-navy-100 placeholder:text-navy-300 focus:ring-2 focus:ring-teal-400;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-semibold text-navy-700;
+  }
+
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.18em] text-teal-500;
+  }
+
+  /* Dashboard sidebar link */
+  .nav-link {
+    @apply flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium text-navy-500 transition-colors hover:bg-beige-100 hover:text-navy-800;
+  }
+  .nav-link-active {
+    @apply nav-link bg-navy-700 text-white hover:bg-navy-700 hover:text-white;
+  }
+
+  /* Auth forms (allauth renders default widgets — style them here). */
+  .auth-card input:not([type="checkbox"]):not([type="submit"]) {
+    @apply input mb-3;
+  }
+  .auth-card label {
+    @apply label;
+  }
+  .auth-card ul {
+    @apply mb-2 text-xs text-red-600;
+  }
+}
+
+@layer utilities {
+  [x-cloak] { display: none !important; }
+}
