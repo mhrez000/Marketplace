@@ -1,0 +1,24 @@
+{% comment %}Expects `dispute` (or None) and `dispute_reasons`. Posts to the current booking page.{% endcomment %}
+<div class="card p-5">
+  {% if dispute %}
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg">Dispute</h2>
+      <span class="pill {% if dispute.is_open %}bg-amber-100 text-amber-700{% elif dispute.status == 'resolved' %}bg-teal-100 text-teal-700{% else %}bg-beige-200 text-navy-600{% endif %}">{{ dispute.get_status_display }}</span>
+    </div>
+    <p class="mt-2 text-sm font-semibold text-navy-700">{{ dispute.get_reason_display }}</p>
+    {% if dispute.detail %}<p class="mt-1 text-sm text-navy-500">{{ dispute.detail }}</p>{% endif %}
+    <p class="mt-1 text-xs text-navy-400">Raised {{ dispute.created_at|date:"d M Y" }} by the {{ dispute.raised_by_role }}.</p>
+    {% if dispute.resolution %}<div class="mt-3 rounded-xl bg-beige-100 p-3 text-sm text-navy-600"><strong>Resolution:</strong> {{ dispute.resolution }}</div>
+    {% elif dispute.is_open %}<p class="mt-2 text-xs text-navy-400">Our team is reviewing this using the contract, messages and delivery record.</p>{% endif %}
+  {% else %}
+    <div x-data="{ open: false }">
+      <button @click="open = !open" class="text-sm font-medium text-navy-500 hover:text-navy-700">Report an issue with this booking</button>
+      <form x-show="open" x-cloak method="post" class="mt-3 space-y-2">{% csrf_token %}
+        <input type="hidden" name="action" value="raise_dispute">
+        <select name="reason" class="input">{% for val, label in dispute_reasons %}<option value="{{ val }}">{{ label }}</option>{% endfor %}</select>
+        <textarea name="detail" rows="2" class="input !rounded-2xl" placeholder="Tell us what happened…"></textarea>
+        <button class="btn w-full bg-navy-700 py-2 text-sm text-white hover:bg-navy-800">Raise dispute</button>
+      </form>
+    </div>
+  {% endif %}
+</div>

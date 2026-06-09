@@ -114,6 +114,40 @@ class RefundPolicyTestCase(TestCase):
         self.assertEqual(r["refundable"], (b.total - b.deposit_amount).quantize(Decimal("0.01")))
 
 
+class DisputeTestCase(TestCase):
+    def setUp(self):
+        from apps.profiles.models import CreativeProfile
+        ContractTemplate.objects.create(name="Std", contract_type="events", body=flow.DEFAULT_CONTRACT)
+        self.creative = User.objects.create_user(email="c@t.com", password="x", is_staff=True)
+        self.client_user = User.objects.create_user(email="cl@t.com", password="pw")
+        self.ws = Workspace.objects.create(owner=self.creative, business_name="S", is_published=True)
+        CreativeProfile.objects.create(workspace=self.ws, primary_category="events")
+        e = flow.create_enquiry(client=self.client_user, workspace=self.ws, event_type="events", message="hi")
+        q = flow.send_quote(enquiry=e, title="Q", line_items=[{"label": "x", "amount": 500}])
+        self.booking = flow.accept_quote(q)
+
+    def test_raise_and_resolve_dispute(self):
+        from apps.bookings.models import Dispute
+        d = flow.raise_dispute(self.booking, user=self.client_user, role="client",
+                               reason="quality", detail="not as described")
+        self.assertEqual(d.status, Dispute.Status.OPEN)
+        self.assertTrue(d.is_open)
+        self.assertEqual(self.booking.disputes.count(), 1)
+
+        flow.resolve_dispute(d, resolved_by=self.creative, status=Dispute.Status.RESOLVED,
+                             resolution="Refund agreed.")
+        d.refresh_from_db()
+        self.assertEqual(d.status, Dispute.Status.RESOLVED)
+        self.assertFalse(d.is_open)
+        self.assertIsNotNone(d.resolved_at)
+
+    def test_dispute_notifies_other_party(self):
+        from apps.notifications.models import Notification
+        flow.raise_dispute(self.booking, user=self.client_user, role="client", reason="other")
+        # The creative (other party) is notified.
+        self.assertTrue(Notification.objects.filter(user=self.creative).exists())
+
+
 class PortalSecurityTestCase(TestCase):
     """A client must never see another client's booking."""
 

@@ -121,3 +121,39 @@ class CalendarEvent(TimeStampedModel):
     @property
     def is_overdue(self):
         return self.event_type in {self.Type.PAYMENT_DUE, self.Type.EDITING_DUE, self.Type.CONTRACT_DUE} and self.start < timezone.now()
+
+
+class Dispute(TimeStampedModel):
+    """A dispute raised on a booking by either party, resolved by an admin
+    (build plan §18). Evidence = the booking's contract, messages and delivery
+    status, all already on-platform."""
+
+    class Reason(models.TextChoices):
+        NO_SHOW = "no_show", "No-show / last-minute cancellation"
+        QUALITY = "quality", "Quality not as expected"
+        LATE_DELIVERY = "late_delivery", "Late or missing delivery"
+        PAYMENT = "payment", "Payment or refund issue"
+        OTHER = "other", "Other"
+
+    class Status(models.TextChoices):
+        OPEN = "open", "Open"
+        UNDER_REVIEW = "under_review", "Under review"
+        RESOLVED = "resolved", "Resolved"
+        REJECTED = "rejected", "Rejected"
+
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name="disputes")
+    raised_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="disputes_raised")
+    raised_by_role = models.CharField(max_length=10, default="client")  # client | creative
+    reason = models.CharField(max_length=16, choices=Reason.choices, default=Reason.OTHER)
+    detail = models.TextField(blank=True)
+    status = models.CharField(max_length=14, choices=Status.choices, default=Status.OPEN, db_index=True)
+    resolution = models.TextField(blank=True)
+    resolved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="disputes_resolved")
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Dispute on {self.booking} ({self.status})"
+
+    @property
+    def is_open(self):
+        return self.status in {self.Status.OPEN, self.Status.UNDER_REVIEW}

@@ -51,11 +51,14 @@ def booking_detail(request, pk):
         return redirect("portal:booking_detail", pk=booking.pk)
 
     from apps.payments.services import compute_refund
+    from apps.bookings.models import Dispute
     return render(request, "portal/booking_detail.html", {
         "booking": booking, "contract": contract, "invoices": invoices,
         "galleries": galleries, "thread": thread, "review": review,
         "messages_list": thread.messages.select_related("sender") if thread else [],
         "S": Booking.Status, "refund": compute_refund(booking),
+        "dispute": booking.disputes.order_by("-created_at").first(),
+        "dispute_reasons": Dispute.Reason.choices,
     })
 
 
@@ -85,6 +88,11 @@ def _handle_client_action(request, booking, contract):
     elif action == "cancel":
         flow.cancel_booking(booking, by="client", reason=request.POST.get("reason", "").strip())
         messages.success(request, "Your booking has been cancelled.")
+    elif action == "raise_dispute":
+        flow.raise_dispute(booking, user=request.user, role="client",
+                           reason=request.POST.get("reason", "other"),
+                           detail=request.POST.get("detail", "").strip())
+        messages.success(request, "Dispute raised — our team will review it and be in touch.")
     elif action == "pay_final":
         flow.pay_final(booking)
         messages.success(request, "Final payment complete. Thank you!")

@@ -126,6 +126,10 @@
       </div>
     </div>
 
+    {% if dispute or booking.is_confirmed %}
+      {% include "partials/_dispute.html" %}
+    {% endif %}
+
     {% if booking.review %}
     <div class="card p-6">
       <h2 class="text-lg">Client review</h2>

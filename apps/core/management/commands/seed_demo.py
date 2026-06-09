@@ -131,6 +131,12 @@ class Command(BaseCommand):
         self._overdue_deposit_booking(sam, admin_ws, event_date=today + timedelta(days=55))
         # A completed job still awaiting a review (drives the review nudge).
         self._completed_booking(sam, admin_ws, event_date=today - timedelta(days=32), review=False)
+        # An open dispute for the admin review queue.
+        disp_b = Booking.objects.filter(workspace=admin_ws, status="completed").first()
+        if disp_b:
+            flow.raise_dispute(disp_b, user=disp_b.client, role="client",
+                               reason="late_delivery",
+                               detail="The gallery arrived a few days later than promised.")
 
         # Saved/favourite creatives for the portal.
         from apps.marketplace.models import Favourite

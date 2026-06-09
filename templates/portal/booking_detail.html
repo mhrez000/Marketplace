@@ -111,6 +111,10 @@
         </div>
       </div>
 
+      {% if dispute or booking.is_confirmed %}
+        {% include "partials/_dispute.html" %}
+      {% endif %}
+
       {% if booking.status != S.CANCELLED and booking.status != S.REFUNDED and not booking.is_complete %}
       <div x-data="{ confirm: false }" class="card p-5">
         <h2 class="text-lg">Need to cancel?</h2>

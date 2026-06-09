@@ -262,6 +262,40 @@ def cancel_booking(booking, *, by="creative", reason=""):
     return booking
 
 
+# ── Disputes ─────────────────────────────────────────────────────────────────
+def raise_dispute(booking, *, user, role, reason, detail=""):
+    from .models import Dispute
+
+    dispute = Dispute.objects.create(
+        booking=booking, raised_by=user, raised_by_role=role, reason=reason, detail=detail)
+    other = booking.client if role == "creative" else booking.workspace.owner
+    notify(other, f"A dispute was raised on '{booking.title}' — our team will review it.",
+           email=True, url=(f"/app/bookings/{booking.id}/" if role == "client" else f"/portal/booking/{booking.id}/"),
+           icon="alert")
+    # Flag any platform admins so it enters the review queue.
+    from django.contrib.auth import get_user_model
+    for admin in get_user_model().objects.filter(is_staff=True)[:5]:
+        notify(admin, f"New dispute ({dispute.get_reason_display()}) on {booking.title}",
+               url="/admin/bookings/dispute/", icon="alert")
+    return dispute
+
+
+def resolve_dispute(dispute, *, resolved_by, status, resolution=""):
+    from .models import Dispute
+
+    dispute.status = status
+    dispute.resolution = resolution
+    dispute.resolved_by = resolved_by
+    dispute.resolved_at = timezone.now()
+    dispute.save()
+    booking = dispute.booking
+    verb = "resolved" if status == Dispute.Status.RESOLVED else "closed"
+    for u in {booking.client, booking.workspace.owner}:
+        notify(u, f"The dispute on '{booking.title}' was {verb}.", email=True,
+               url="/portal/" if u == booking.client else "/app/bookings/", icon="bell")
+    return dispute
+
+
 # ── Review ─────────────────────────────────────────────────────────────────
 def create_review(*, booking, rating, title="", body=""):
     review, _ = Review.objects.update_or_create(

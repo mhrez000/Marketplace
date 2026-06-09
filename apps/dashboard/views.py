@@ -174,11 +174,14 @@ def booking_detail(request, pk):
         return redirect("dashboard:booking_detail", pk=booking.pk)
 
     from apps.payments.services import compute_refund
+    from apps.bookings.models import Dispute
     return render(request, "dashboard/booking_detail.html", {
         "active": "bookings", "ws": ws, "booking": booking, "contract": contract,
         "invoices": invoices, "galleries": galleries, "thread": thread,
         "messages_list": thread.messages.select_related("sender") if thread else [],
         "S": Booking.Status, "refund": compute_refund(booking),
+        "dispute": booking.disputes.order_by("-created_at").first(),
+        "dispute_reasons": Dispute.Reason.choices,
     })
 
 
@@ -210,6 +213,11 @@ def _handle_creative_action(request, booking, contract, action):
     elif action == "cancel":
         flow.cancel_booking(booking, by="creative", reason=request.POST.get("reason", "").strip())
         messages.success(request, "Booking cancelled and the date freed up.")
+    elif action == "raise_dispute":
+        flow.raise_dispute(booking, user=request.user, role="creative",
+                           reason=request.POST.get("reason", "other"),
+                           detail=request.POST.get("detail", "").strip())
+        messages.success(request, "Dispute raised — our team will review it.")
     elif action == "send_message":
         body = request.POST.get("body", "").strip()
         thread = booking.threads.first() or (booking.enquiry.threads.first() if booking.enquiry else None)
