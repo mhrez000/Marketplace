@@ -90,7 +90,25 @@ Covers GST/deposit maths, the full booking state machine, no-double-charge, and 
 
 ## Switching to Postgres/PostGIS (Phase 2)
 Set `DATABASE_URL` in `.env`, e.g. `postgis://user:pass@localhost:5432/lens`,
-install `psycopg[binary]`, and add `django.contrib.gis` when geo search lands.
+install `psycopg[binary]` (already in requirements), and add `django.contrib.gis`
+when you move geo search from the Haversine fallback to PostGIS.
+
+## Deployment (Fly.io, Sydney)
+The repo ships a `Dockerfile`, `fly.toml` (syd region, `/healthz` check,
+`migrate` release command) and a GitHub Actions pipeline (`.github/workflows/ci.yml`:
+lint → test → deploy on push to `main`).
+
+```bash
+fly launch --no-deploy            # creates the app
+fly postgres create               # managed Postgres, then attach it
+fly secrets set SECRET_KEY=$(python -c "import secrets;print(secrets.token_urlsafe(50))") \
+                DATABASE_URL=postgres://...                 # from the attach step
+                # optional: STRIPE_SECRET_KEY=... STRIPE_WEBHOOK_SECRET=... etc.
+fly deploy
+```
+
+CI auto-deploys on push to `main` if a `FLY_API_TOKEN` GitHub secret is set.
+Tailwind CSS is pre-built and committed, so the image needs no Node.
 
 ## Roadmap (build plan §9)
 - [x] **Phase 0 — Foundations**: project skeleton, design system, auth, public + dashboard shells

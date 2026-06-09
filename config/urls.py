@@ -5,10 +5,11 @@ from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path
 
 from apps.marketplace.sitemaps import SITEMAPS
-from apps.marketplace.views import robots_txt
+from apps.marketplace.views import health, robots_txt
 from apps.payments.views import stripe_webhook
 
 urlpatterns = [
+    path("healthz", health, name="healthz"),
     path("admin/", admin.site.urls),
     path("accounts/", include("allauth.urls")),
     path("app/", include("apps.dashboard.urls")),

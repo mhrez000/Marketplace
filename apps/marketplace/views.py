@@ -213,6 +213,12 @@ def browse(request):
     })
 
 
+def health(request):
+    """Liveness check for the platform's health probe (Fly.io)."""
+    from django.http import HttpResponse
+    return HttpResponse("ok", content_type="text/plain")
+
+
 def robots_txt(request):
     from django.http import HttpResponse
     lines = ["User-agent: *", "Allow: /", "Disallow: /app/", "Disallow: /portal/",

@@ -1,0 +1,37 @@
+# Fly.io config for Lens. Sydney region (AU data residency, build plan §10).
+# Deploy:  fly launch --no-deploy   (first time, creates the app + Postgres)
+#          fly secrets set SECRET_KEY=... DATABASE_URL=... STRIPE_SECRET_KEY=...
+#          fly deploy
+app = "lens"
+primary_region = "syd"
+
+[build]
+
+[env]
+  DJANGO_SETTINGS_MODULE = "config.settings.prod"
+  PORT = "8080"
+  ALLOWED_HOSTS = "lens.fly.dev"
+  SITE_URL = "https://lens.fly.dev"
+
+# Run migrations on every deploy, before the new release goes live.
+[deploy]
+  release_command = "python manage.py migrate --noinput"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "10s"
+    method = "get"
+    path = "/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
