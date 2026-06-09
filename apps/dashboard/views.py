@@ -58,10 +58,15 @@ def overview(request):
     leads = enquiries.select_related("client").order_by("-created_at")[:6]
     upcoming = confirmed.exclude(event_date=None).filter(event_date__gte=timezone.now().date()).order_by("event_date")[:5]
 
+    new_leads = enquiries.filter(status=Enquiry.Status.NEW)
+    stale_leads = sum(1 for e in new_leads if e.is_stale)
+    avg_resp = availability.avg_response_hours(ws)
+
     return render(request, "dashboard/overview.html", {
         "active": "overview", "ws": ws, "stats": stats, "leads": leads,
         "upcoming": upcoming, "bookings_count": bookings.count(),
         "profile_pct": _profile_completeness(ws),
+        "stale_leads": stale_leads, "avg_response": avg_resp,
     })
 
 
@@ -213,6 +218,8 @@ def _handle_creative_action(request, booking, contract, action):
         thread = booking.threads.first() or (booking.enquiry.threads.first() if booking.enquiry else None)
         if thread and body:
             Message.objects.create(thread=thread, sender=request.user, body=body)
+            if thread.enquiry:  # creative replying counts as a response
+                thread.enquiry.mark_responded()
 
 
 def _create_demo_gallery(booking):

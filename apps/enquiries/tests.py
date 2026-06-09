@@ -79,3 +79,43 @@ class LifecycleHousekeepingTests(TestCase):
         self._quote()
         # creative gets the enquiry email, client gets the quote email
         self.assertGreaterEqual(len(mail.outbox), 2)
+
+
+class ResponsivenessTests(TestCase):
+    def setUp(self):
+        ContractTemplate.objects.create(name="Std", contract_type="events", body=flow.DEFAULT_CONTRACT)
+        self.creative = User.objects.create_user(email="c@t.com", password="x")
+        self.client_user = User.objects.create_user(email="cl@t.com", password="pw")
+        self.ws = Workspace.objects.create(owner=self.creative, business_name="S", is_published=True)
+        CreativeProfile.objects.create(workspace=self.ws, primary_category="events")
+
+    def _enquiry(self):
+        return flow.create_enquiry(client=self.client_user, workspace=self.ws,
+                                   event_type="events", message="hi")
+
+    def test_quote_marks_responded_and_measures(self):
+        from apps.profiles.services import avg_response_hours
+        e = self._enquiry()
+        self.assertIsNone(e.responded_at)
+        flow.send_quote(enquiry=e, title="Q", line_items=[{"label": "x", "amount": 100}])
+        e.refresh_from_db()
+        self.assertIsNotNone(e.responded_at)
+        self.assertIsNotNone(avg_response_hours(self.ws))
+
+    def test_stale_enquiry_detected_and_nudged(self):
+        from apps.enquiries.services import nudge_stale_enquiries
+        from apps.enquiries.models import Enquiry
+        e = self._enquiry()
+        Enquiry.objects.filter(pk=e.pk).update(created_at=timezone.now() - timedelta(hours=48))
+        e.refresh_from_db()
+        self.assertTrue(e.is_stale)
+        self.assertEqual(nudge_stale_enquiries(), 1)
+        self.assertEqual(nudge_stale_enquiries(), 0)  # throttled
+
+    def test_responded_enquiry_not_stale(self):
+        from apps.enquiries.models import Enquiry
+        e = self._enquiry()
+        flow.send_quote(enquiry=e, title="Q", line_items=[{"label": "x", "amount": 100}])
+        Enquiry.objects.filter(pk=e.pk).update(created_at=timezone.now() - timedelta(hours=48))
+        e.refresh_from_db()
+        self.assertFalse(e.is_stale)  # answered (status QUOTED), so not waiting

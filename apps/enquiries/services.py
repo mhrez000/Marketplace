@@ -24,6 +24,32 @@ def expire_quotes():
     return count
 
 
+def nudge_stale_enquiries(hours=24):
+    """Nudge creatives sitting on unanswered enquiries — responsiveness is the
+    marketplace's core promise. Throttled per enquiry."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    now = timezone.now()
+    cutoff = now - timedelta(hours=hours)
+    count = 0
+    stale = Enquiry.objects.filter(status=Enquiry.Status.NEW, created_at__lt=cutoff).select_related(
+        "workspace", "client")
+    for e in stale:
+        if e.nudged_at and (now - e.nudged_at) < timedelta(hours=20):
+            continue
+        days = int(e.age_hours // 24)
+        ago = f"{days}d" if days else f"{int(e.age_hours)}h"
+        notify(e.workspace.owner,
+               f"Still waiting: {e.client.email}'s enquiry from {ago} ago — reply to keep your ranking",
+               url="/app/leads/", icon="alert", email=True)
+        e.nudged_at = now
+        e.save(update_fields=["nudged_at", "updated_at"])
+        count += 1
+    return count
+
+
 def quote_expiry_reminders(days=2):
     """Nudge clients whose quote expires within `days`."""
     today = timezone.now().date()

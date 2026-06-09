@@ -130,6 +130,17 @@ class Command(BaseCommand):
         self._expiring_quote(olivia, harper, event_date=today + timedelta(days=70), days_left=-2)
         self._overdue_deposit_booking(sam, admin_ws, event_date=today + timedelta(days=55))
 
+        # Realistic response times: backdate answered enquiries so the "responds
+        # in ~Xh" figure is meaningful (created a few hours before the reply).
+        from apps.enquiries.models import Enquiry as _Enq
+        for e in _Enq.objects.filter(responded_at__isnull=False):
+            hrs = 2 + (e.pk % 6)
+            _Enq.objects.filter(pk=e.pk).update(created_at=e.responded_at - timedelta(hours=hrs))
+        # Age a couple of unanswered leads so they show as "waiting > 24h".
+        new_leads = list(_Enq.objects.filter(status=_Enq.Status.NEW).order_by("id"))
+        for e, age in zip(new_leads, [50, 30]):
+            _Enq.objects.filter(pk=e.pk).update(created_at=timezone.now() - timedelta(hours=age))
+
         # Reflect lifecycle statuses now (expire stale quotes, flag overdue invoices).
         from apps.enquiries.services import expire_quotes
         from apps.payments.services import mark_overdue_invoices

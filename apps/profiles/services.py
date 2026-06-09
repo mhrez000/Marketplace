@@ -105,6 +105,16 @@ def blocked_dates(workspace, *, from_date=None):
     ).order_by("date"))
 
 
+def avg_response_hours(workspace):
+    """Mean time-to-first-response across answered enquiries, or None."""
+    from apps.enquiries.models import Enquiry
+    answered = Enquiry.objects.filter(workspace=workspace, responded_at__isnull=False)
+    hours = [e.response_hours for e in answered if e.response_hours is not None]
+    if not hours:
+        return None
+    return sum(hours) / len(hours)
+
+
 def unavailable_workspace_ids(on_date):
     """Workspace ids that are NOT free on `on_date` — for search exclusion."""
     if not on_date:

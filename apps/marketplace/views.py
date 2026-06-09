@@ -77,14 +77,16 @@ def profile_detail(request, slug):
     reviews = workspace.reviews.select_related("client").order_by("-created_at")[:6]
     rating_agg = annotate_ratings(CreativeProfile.objects.filter(pk=profile.pk)).first()
 
-    from apps.profiles.services import unavailable_dates
+    from apps.profiles.services import avg_response_hours, unavailable_dates
     busy_dates = unavailable_dates(workspace, limit=8)
+    measured_response = avg_response_hours(workspace)
 
     return render(request, "marketplace/profile_detail.html", {
         "workspace": workspace, "profile": profile, "packages": packages,
         "reviews": reviews, "categories": CATEGORIES, "busy_dates": busy_dates,
         "avg_rating": getattr(rating_agg, "avg_rating", None),
         "review_count": getattr(rating_agg, "review_count", 0),
+        "measured_response": measured_response,
     })
 
 

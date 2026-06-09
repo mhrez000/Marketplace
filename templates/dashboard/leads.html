@@ -12,23 +12,25 @@
         <th class="px-5 py-3 font-semibold">Client</th>
         <th class="px-5 py-3 font-semibold">Type</th>
         <th class="px-5 py-3 font-semibold">Event date</th>
-        <th class="px-5 py-3 font-semibold">Received</th>
+        <th class="px-5 py-3 font-semibold">Age</th>
+        <th class="px-5 py-3 font-semibold">Response</th>
         <th class="px-5 py-3 font-semibold">Status</th>
         <th class="px-5 py-3"></th>
       </tr>
     </thead>
     <tbody class="divide-y divide-navy-100/70">
       {% for e in enquiries %}
-      <tr class="hover:bg-beige-100/50">
+      <tr class="hover:bg-beige-100/50 {% if e.is_stale %}bg-amber-50/40{% endif %}">
         <td class="px-5 py-3 font-medium text-navy-700">{{ e.client.get_full_name|default:e.client.email }}</td>
         <td class="px-5 py-3 text-navy-500">{{ e.get_event_type_display }}</td>
         <td class="px-5 py-3 text-navy-500">{{ e.event_date|date:"d M Y"|default:"—" }}</td>
-        <td class="px-5 py-3 text-navy-400">{{ e.created_at|date:"d M" }}</td>
+        <td class="px-5 py-3"><span class="{% if e.is_stale %}font-semibold text-amber-600{% else %}text-navy-400{% endif %}">{{ e.age_label }}{% if e.is_stale %} ⏱{% endif %}</span></td>
+        <td class="px-5 py-3 text-navy-400">{% if e.response_hours != None %}<span class="text-teal-600">~{{ e.response_hours|floatformat:0 }}h</span>{% else %}—{% endif %}</td>
         <td class="px-5 py-3">{% include "partials/_status.html" with status=e.status label=e.get_status_display %}</td>
         <td class="px-5 py-3 text-right"><a href="{% url 'dashboard:lead_detail' e.pk %}" class="btn-ghost !py-1.5 !px-3 text-xs">Open</a></td>
       </tr>
       {% empty %}
-      <tr><td colspan="6" class="px-5 py-10 text-center text-navy-400">No enquiries yet. Share your <a href="{% url 'marketplace:profile' ws.slug %}" class="text-teal-600">public profile</a> to get found.</td></tr>
+      <tr><td colspan="7" class="px-5 py-10 text-center text-navy-400">No enquiries yet. Share your <a href="{% url 'marketplace:profile' ws.slug %}" class="text-teal-600">public profile</a> to get found.</td></tr>
       {% endfor %}
     </tbody>
   </table>

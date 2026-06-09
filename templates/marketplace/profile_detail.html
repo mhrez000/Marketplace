@@ -24,7 +24,10 @@
             <p class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-navy-400">
               <span class="inline-flex items-center gap-1.5"><svg viewBox="0 0 24 24" fill="none" class="h-4 w-4"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z" stroke="currentColor" stroke-width="1.7"/></svg>{{ profile.location_label }}</span>
               {% if avg_rating %}<span class="inline-flex items-center gap-1 font-semibold text-navy-700"><svg viewBox="0 0 24 24" class="h-4 w-4 text-amber-400" fill="currentColor"><path d="M12 2l3 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.9 21l1.2-6.8-5-4.9 6.9-1z"/></svg>{{ avg_rating|floatformat:1 }} ({{ review_count }})</span>{% endif %}
-              <span>Responds in ~{{ profile.response_time_hours }}h</span>
+              {% if measured_response %}
+                <span>Responds in ~{{ measured_response|floatformat:0 }}h</span>
+                {% if measured_response <= 6 %}<span class="pill bg-teal-100 text-teal-700">⚡ Fast responder</span>{% endif %}
+              {% else %}<span>Responds in ~{{ profile.response_time_hours }}h</span>{% endif %}
             </p>
           </div>
           <a href="#enquire" class="btn-accent">Request a quote</a>

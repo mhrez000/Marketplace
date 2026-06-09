@@ -65,6 +65,7 @@ def send_quote(*, enquiry, title, line_items, package=None, deposit_pct=Decimal(
     )
     quote.recalc(deposit_pct=deposit_pct)
     quote.save()
+    enquiry.mark_responded()  # sending a quote counts as the first response
     enquiry.status = Enquiry.Status.QUOTED
     enquiry.save(update_fields=["status", "updated_at"])
     notify(enquiry.client, f"You received a quote from {enquiry.workspace.business_name}", email=True,
