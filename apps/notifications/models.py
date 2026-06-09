@@ -15,6 +15,22 @@ class Notification(TimeStampedModel):
         return self.verb
 
 
+class NotificationPreference(TimeStampedModel):
+    """Per-user channel opt-outs. Transactional notifications always send; these
+    govern reminders, marketing and SMS (build plan §16)."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notification_preference"
+    )
+    email_reminders = models.BooleanField(default=True)
+    email_marketing = models.BooleanField(default=False)
+    sms_enabled = models.BooleanField(default=False)
+    sms_phone = models.CharField(max_length=32, blank=True)
+
+    def __str__(self):
+        return f"Preferences for {self.user}"
+
+
 def notify(user, verb, url="", icon="bell", email=False):
     """Low-level in-app notification (+ optional branded email). For richer,
     matrix-driven events prefer `dispatch()`."""

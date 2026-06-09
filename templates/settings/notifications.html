@@ -1,0 +1,54 @@
+{% extends "base_public.html" %}
+{% block title %}Notification settings — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<section class="container-content flex justify-center py-12">
+  <div class="w-full max-w-xl">
+    <h1 class="text-2xl font-600">Notification settings</h1>
+    <p class="mt-1 text-sm text-navy-500">Choose what reaches your inbox and phone.</p>
+
+    <form method="post" class="card mt-6 divide-y divide-navy-100/70 p-0">
+      {% csrf_token %}
+      <div class="flex items-start justify-between gap-4 p-5">
+        <div>
+          <p class="font-semibold text-navy-700">Booking & payment updates</p>
+          <p class="text-sm text-navy-400">Confirmations, contracts, receipts and delivered galleries.</p>
+        </div>
+        <span class="pill-verified shrink-0">Always on</span>
+      </div>
+
+      <label class="flex cursor-pointer items-start justify-between gap-4 p-5 hover:bg-beige-100/50">
+        <div>
+          <p class="font-semibold text-navy-700">Reminders</p>
+          <p class="text-sm text-navy-400">Payment due, quotes expiring, review nudges.</p>
+        </div>
+        <input type="checkbox" name="email_reminders" {% if pref.email_reminders %}checked{% endif %} class="mt-1 h-5 w-5 accent-teal-500">
+      </label>
+
+      <label class="flex cursor-pointer items-start justify-between gap-4 p-5 hover:bg-beige-100/50">
+        <div>
+          <p class="font-semibold text-navy-700">Tips & news</p>
+          <p class="text-sm text-navy-400">Occasional product updates and helpful tips.</p>
+        </div>
+        <input type="checkbox" name="email_marketing" {% if pref.email_marketing %}checked{% endif %} class="mt-1 h-5 w-5 accent-teal-500">
+      </label>
+
+      <div class="p-5">
+        <label class="flex cursor-pointer items-start justify-between gap-4">
+          <div>
+            <p class="font-semibold text-navy-700">SMS for urgent updates</p>
+            <p class="text-sm text-navy-400">Deposit confirmed, overdue payments, cancellations.</p>
+          </div>
+          <input type="checkbox" name="sms_enabled" {% if pref.sms_enabled %}checked{% endif %} class="mt-1 h-5 w-5 accent-teal-500">
+        </label>
+        <input type="tel" name="sms_phone" value="{{ pref.sms_phone }}" placeholder="Mobile number (e.g. 04xx xxx xxx)" class="input mt-3">
+        <p class="mt-1 text-xs text-navy-400">SMS is reserved for time-critical money updates only.</p>
+      </div>
+
+      <div class="p-5">
+        <button class="btn-accent">Save preferences</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
