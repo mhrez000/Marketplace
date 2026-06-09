@@ -70,7 +70,12 @@ All passwords: **`lens12345`**
 
 **End-to-end demo flow:** log in as `northcote@lens.test` → *My portal* → accept the quote → sign the contract → pay the deposit (test gateway). Then log in as the creative to mark the shoot complete, deliver a gallery, and send the final invoice.
 
-> Payments use a **test gateway** that simulates charges (no Stripe keys yet). Swap in Stripe by implementing `StripeGateway` in `apps/payments/services.py`.
+> Payments use a built-in **test gateway** that simulates charges. **Going live with Stripe** is a config switch, not a rewrite:
+> 1. `pip install stripe`
+> 2. Set `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` in `.env`.
+> 3. Point a Stripe webhook at `POST /api/v1/webhooks/stripe/` (events: `payment_intent.succeeded`).
+>
+> `get_gateway()` then returns the real `StripeGateway`; the booking advances only when Stripe's signed, idempotent webhook fires (never from the client), via the same `settle_invoice()` the test gateway uses.
 
 ## Tests
 ```bash

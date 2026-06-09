@@ -32,8 +32,45 @@ class TestGateway:
         return payment
 
 
+class StripeGateway:
+    """Real Stripe (drop-in). Inert until STRIPE_SECRET_KEY is set and the
+    `stripe` package is installed (`pip install stripe`).
+
+    Unlike the test gateway, a Stripe charge settles ASYNCHRONOUSLY: this creates
+    a PaymentIntent and returns a PENDING Payment. The booking only advances when
+    Stripe calls our webhook (apps/payments/views.stripe_webhook) with
+    payment_intent.succeeded — never from the client request (build plan §10).
+    """
+
+    provider = "stripe"
+
+    def __init__(self):
+        import stripe  # lazy: only required when Stripe is actually enabled
+        from django.conf import settings
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+        self._stripe = stripe
+
+    def charge(self, invoice, *, save=True):
+        intent = self._stripe.PaymentIntent.create(
+            amount=int(invoice.amount * 100),  # cents
+            currency="aud",
+            metadata={"invoice_id": invoice.id, "booking_id": str(invoice.booking_id)},
+            automatic_payment_methods={"enabled": True},
+        )
+        payment = Payment(
+            invoice=invoice, provider=self.provider, provider_ref=intent.id,
+            amount=invoice.amount, status=Payment.Status.PENDING,
+        )
+        if save:
+            payment.save()
+        return payment
+
+
 def get_gateway():
-    # When STRIPE_SECRET_KEY is configured, return StripeGateway() here instead.
+    """Use Stripe when configured, else the built-in test gateway."""
+    from django.conf import settings
+    if getattr(settings, "STRIPE_SECRET_KEY", ""):
+        return StripeGateway()
     return TestGateway()
 
 

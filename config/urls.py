@@ -3,11 +3,14 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import include, path
 
+from apps.payments.views import stripe_webhook
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/", include("allauth.urls")),
     path("app/", include("apps.dashboard.urls")),
     path("portal/", include("apps.portal.urls")),
+    path("api/v1/webhooks/stripe/", stripe_webhook, name="stripe_webhook"),
     path("", include("apps.marketplace.urls")),
 ]
 

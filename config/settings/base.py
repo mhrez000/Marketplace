@@ -181,3 +181,9 @@ BRAND_TAGLINE = "Find & book Melbourne's best photographers and videographers."
 
 # Absolute base URL for links inside transactional emails.
 SITE_URL = env("SITE_URL", default="http://localhost:8000")
+
+# Stripe — when keys are set, the payment gateway switches from the built-in
+# TEST gateway to real Stripe automatically (apps/payments/services.get_gateway).
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
+STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
+STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")

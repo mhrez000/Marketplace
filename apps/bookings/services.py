@@ -172,10 +172,32 @@ def pay_deposit(booking):
     if invoice.is_paid:
         return invoice.payments.first()
     payment = charge_invoice(invoice)
-    booking.transition(Booking.Status.DEPOSIT_PAID)
-    booking.transition(Booking.Status.CONFIRMED)
-    _on_confirmed(booking)
+    # Only advance when the payment actually succeeded. The test gateway settles
+    # synchronously; Stripe settles later via the webhook, which calls
+    # settle_invoice() itself.
+    if payment.status == Payment.Status.SUCCEEDED:
+        settle_invoice(invoice)
     return payment
+
+
+def settle_invoice(invoice):
+    """Mark an invoice paid and advance the booking — the single place both the
+    synchronous test gateway and the Stripe webhook funnel through. Idempotent."""
+    if not invoice.is_paid:
+        invoice.status = Invoice.Status.PAID
+        invoice.save(update_fields=["status", "updated_at"])
+    booking = invoice.booking
+    if invoice.invoice_type == Invoice.Type.DEPOSIT and not booking.is_confirmed:
+        booking.transition(Booking.Status.DEPOSIT_PAID)
+        booking.transition(Booking.Status.CONFIRMED)
+        _on_confirmed(booking)
+    elif invoice.invoice_type == Invoice.Type.FINAL and booking.status != Booking.Status.COMPLETED:
+        booking.transition(Booking.Status.FINAL_PAID)
+        booking.transition(Booking.Status.COMPLETED)
+        from apps.production.services import mark_all_done
+        mark_all_done(booking)
+        notify(booking.workspace.owner, f"Final payment received — {booking.title}", url="/app/bookings/", icon="card")
+        notify(booking.client, "Thanks! Your booking is complete. Leave a review?", url=f"/portal/booking/{booking.id}/", icon="bell")
 
 
 def _on_confirmed(booking):
@@ -204,13 +226,9 @@ def pay_final(booking):
             due_date=timezone.now().date(), status=Invoice.Status.SENT,
         )
     if not inv.is_paid:
-        charge_invoice(inv)
-    booking.transition(Booking.Status.FINAL_PAID)
-    booking.transition(Booking.Status.COMPLETED)
-    from apps.production.services import mark_all_done
-    mark_all_done(booking)  # job done — close out the delivery checklist
-    notify(booking.workspace.owner, f"Final payment received — {booking.title}", url="/app/bookings/", icon="card")
-    notify(booking.client, "Thanks! Your booking is complete. Leave a review?", url=f"/portal/booking/{booking.id}/", icon="bell")
+        payment = charge_invoice(inv)
+        if payment.status == Payment.Status.SUCCEEDED:
+            settle_invoice(inv)
     return inv
 
 
