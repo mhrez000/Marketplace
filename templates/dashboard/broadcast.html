@@ -1,0 +1,55 @@
+{% extends "base_app.html" %}
+{% block title %}Broadcast — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<h1 class="text-2xl font-600">Broadcast</h1>
+<p class="mt-1 text-sm text-navy-500">Send a platform announcement to your users. Appears in their notifications; email optional.</p>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-3">
+  <!-- Compose -->
+  <div class="card p-6 lg:col-span-2">
+    <h2 class="text-lg">Compose</h2>
+    <form method="post" class="mt-4 space-y-4">
+      {% csrf_token %}
+      <div>
+        <label class="label">Audience</label>
+        <select name="audience" class="input">
+          {% for a in audiences %}<option value="{{ a.value }}">{{ a.label }} ({{ a.count }})</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="label">Title</label>
+        <input name="title" class="input" placeholder="e.g. New: instant booking is live 🎉" required>
+      </div>
+      <div>
+        <label class="label">Message</label>
+        <textarea name="body" rows="4" class="input !rounded-2xl" placeholder="What do you want to tell everyone?" required></textarea>
+      </div>
+      <div>
+        <label class="label">Link (optional)</label>
+        <input name="url" class="input" placeholder="/pricing/ or https://…">
+      </div>
+      <label class="flex items-center gap-2 text-sm text-navy-600">
+        <input type="checkbox" name="send_email" class="h-5 w-5 accent-teal-500">
+        Also send as email (to users who allow product news)
+      </label>
+      <button class="btn-accent">Send broadcast</button>
+    </form>
+  </div>
+
+  <!-- Recent -->
+  <div class="card p-6">
+    <h2 class="text-lg">Recent broadcasts</h2>
+    <div class="mt-4 space-y-3">
+      {% for b in past %}
+      <div class="rounded-xl bg-beige-100 p-3">
+        <p class="text-sm font-semibold text-navy-700">{{ b.title }}</p>
+        <p class="mt-0.5 text-xs text-navy-400">{{ b.get_audience_display }} · {{ b.recipient_count }} sent · {{ b.created_at|date:"d M, H:i" }}{% if b.send_email %} · email{% endif %}</p>
+      </div>
+      {% empty %}
+      <p class="text-sm text-navy-400">No broadcasts yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

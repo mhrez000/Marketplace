@@ -15,6 +15,39 @@ class Notification(TimeStampedModel):
         return self.verb
 
 
+class Broadcast(TimeStampedModel):
+    """A platform-wide announcement sent by an admin to a target audience as
+    in-app notifications (+ optional email, respecting marketing opt-outs)."""
+
+    class Audience(models.TextChoices):
+        ALL = "all", "Everyone"
+        CREATIVES = "creatives", "Creatives"
+        CLIENTS = "clients", "Clients"
+
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="broadcasts")
+    audience = models.CharField(max_length=12, choices=Audience.choices, default=Audience.ALL)
+    title = models.CharField(max_length=160)
+    body = models.TextField()
+    url = models.CharField(max_length=300, blank=True)
+    send_email = models.BooleanField(default=False)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    recipient_count = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.title} → {self.get_audience_display()}"
+
+
+def resolve_audience(audience):
+    """Users a broadcast should reach (active, non-admin)."""
+    from django.contrib.auth import get_user_model
+    qs = get_user_model().objects.filter(is_active=True, is_superuser=False)
+    if audience == Broadcast.Audience.CREATIVES:
+        return qs.filter(owned_workspaces__isnull=False).distinct()
+    if audience == Broadcast.Audience.CLIENTS:
+        return qs.filter(owned_workspaces__isnull=True).distinct()
+    return qs.distinct()
+
+
 class NotificationPreference(TimeStampedModel):
     """Per-user channel opt-outs. Transactional notifications always send; these
     govern reminders, marketing and SMS (build plan §16)."""
@@ -46,10 +79,11 @@ def _email_allowed(user, category):
     NotificationPreference if one exists (forward-compatible — defaults to on)."""
     from .events import MARKETING, REMINDER
     if category not in (REMINDER, MARKETING):
-        return True
+        return True  # transactional + digest always send
     pref = getattr(user, "notification_preference", None)
     if pref is None:
-        return True
+        # No preferences set yet: reminders default ON, marketing default OFF (opt-in).
+        return category == REMINDER
     if category == REMINDER:
         return getattr(pref, "email_reminders", True)
     return getattr(pref, "email_marketing", False)

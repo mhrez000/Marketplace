@@ -19,6 +19,30 @@ def send_sms_task(phone, body):
     return send_sms(phone, body)
 
 
+@shared_task(name="apps.notifications.send_broadcast")
+def send_broadcast(broadcast_id):
+    """Deliver a broadcast: an in-app notification to everyone in the audience,
+    plus a branded email to those who allow marketing (if send_email is on)."""
+    from django.utils import timezone
+
+    from .events import MARKETING
+    from .models import Broadcast, Notification, _email_allowed, _send_email, resolve_audience
+
+    b = Broadcast.objects.filter(pk=broadcast_id).first()
+    if not b:
+        return "missing"
+    count = 0
+    for u in resolve_audience(b.audience).iterator():
+        Notification.objects.create(user=u, verb=b.title, url=b.url, icon="megaphone")
+        if b.send_email and getattr(u, "email", "") and _email_allowed(u, MARKETING):
+            _send_email(u, b.body, b.url, subject=b.title, cta_label="Learn more")
+        count += 1
+    b.recipient_count = count
+    b.sent_at = timezone.now()
+    b.save(update_fields=["recipient_count", "sent_at", "updated_at"])
+    return f"{count} recipient(s)"
+
+
 @shared_task(name="apps.notifications.message_digest")
 def message_digest():
     """Daily digest: one email per user with new inbound messages (build plan §16

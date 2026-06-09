@@ -86,6 +86,46 @@ class SmsAndDigestTests(TestCase):
         self.assertIn("cr@t.com", mail.outbox[0].to)
 
 
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True,
+                   EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class BroadcastTests(TestCase):
+    def setUp(self):
+        from apps.workspaces.models import Workspace
+        self.admin = User.objects.create_user(email="a@t.com", password="x", is_staff=True, is_superuser=True)
+        self.creative = User.objects.create_user(email="cr@t.com", password="x")
+        Workspace.objects.create(owner=self.creative, business_name="S")
+        self.client_a = User.objects.create_user(email="c1@t.com", password="x")
+        self.client_b = User.objects.create_user(email="c2@t.com", password="x")
+
+    def test_audience_resolution(self):
+        from apps.notifications.models import resolve_audience
+        # superuser excluded; one creative; two clients
+        self.assertEqual(resolve_audience("creatives").count(), 1)
+        self.assertEqual(resolve_audience("clients").count(), 2)
+        self.assertEqual(resolve_audience("all").count(), 3)
+
+    def test_broadcast_inapp_all_email_optins_only(self):
+        from apps.notifications.models import Broadcast, Notification, NotificationPreference
+        from apps.notifications.tasks import send_broadcast
+        NotificationPreference.objects.create(user=self.client_a, email_marketing=True)  # opted in
+        b = Broadcast.objects.create(sender=self.admin, audience="clients", title="Hi",
+                                     body="News for clients", send_email=True)
+        mail.outbox = []
+        send_broadcast(b.id)
+        # in-app to both clients, email only to the opt-in
+        self.assertEqual(Notification.objects.filter(verb="Hi").count(), 2)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("c1@t.com", mail.outbox[0].to)
+        b.refresh_from_db()
+        self.assertEqual(b.recipient_count, 2)
+        self.assertIsNotNone(b.sent_at)
+
+    def test_non_staff_cannot_open_broadcast(self):
+        self.client.force_login(self.client_a)
+        r = self.client.get("/app/broadcast/", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 404)
+
+
 class SettingsPageTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(email="s@t.com", password="pw")

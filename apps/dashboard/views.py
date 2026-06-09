@@ -330,6 +330,43 @@ def deliveries(request):
 
 
 @login_required
+def broadcast(request):
+    """Staff-only: send a platform announcement to a target audience."""
+    from django.http import Http404
+    from apps.notifications.models import Broadcast, resolve_audience
+    from apps.notifications.tasks import send_broadcast
+
+    if not request.user.is_staff:
+        raise Http404
+
+    if request.method == "POST":
+        b = Broadcast.objects.create(
+            sender=request.user,
+            audience=request.POST.get("audience", Broadcast.Audience.ALL),
+            title=request.POST.get("title", "").strip(),
+            body=request.POST.get("body", "").strip(),
+            url=request.POST.get("url", "").strip(),
+            send_email="send_email" in request.POST,
+        )
+        if not b.title or not b.body:
+            b.delete()
+            messages.error(request, "A title and message are required.")
+        else:
+            n = resolve_audience(b.audience).count()
+            send_broadcast.delay(b.id)
+            messages.success(request, f"Broadcast sent to {n} {b.get_audience_display().lower()}"
+                                      f"{' (with email)' if b.send_email else ''}.")
+            return redirect("dashboard:broadcast")
+
+    return render(request, "dashboard/broadcast.html", {
+        "active": "broadcast", "ws": get_active_workspace(request.user),
+        "audiences": [{"value": a, "label": label, "count": resolve_audience(a).count()}
+                      for a, label in Broadcast.Audience.choices],
+        "past": Broadcast.objects.select_related("sender").order_by("-created_at")[:10],
+    })
+
+
+@login_required
 def notifications_read(request):
     """Mark all of the current user's notifications read."""
     request.user.notifications.filter(is_read=False).update(is_read=True)
