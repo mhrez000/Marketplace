@@ -177,11 +177,12 @@ def booking_detail(request, pk):
         _handle_creative_action(request, booking, contract, action)
         return redirect("dashboard:booking_detail", pk=booking.pk)
 
+    from apps.payments.services import compute_refund
     return render(request, "dashboard/booking_detail.html", {
         "active": "bookings", "ws": ws, "booking": booking, "contract": contract,
         "invoices": invoices, "galleries": galleries, "thread": thread,
         "messages_list": thread.messages.select_related("sender") if thread else [],
-        "S": Booking.Status,
+        "S": Booking.Status, "refund": compute_refund(booking),
     })
 
 

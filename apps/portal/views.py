@@ -23,7 +23,16 @@ def home(request):
                  .select_related("workspace").prefetch_related("quotes").order_by("-created_at"))
     bookings = (Booking.objects.filter(client=request.user)
                 .select_related("workspace").order_by("-created_at"))
-    return render(request, "portal/home.html", {"enquiries": enquiries, "bookings": bookings})
+
+    from apps.core.selectors import annotate_ratings
+    from apps.profiles.models import CreativeProfile
+    fav_ids = request.user.favourites.values_list("workspace_id", flat=True)
+    saved = annotate_ratings(
+        CreativeProfile.objects.filter(workspace_id__in=fav_ids, workspace__is_published=True)
+        .select_related("workspace"))
+
+    return render(request, "portal/home.html",
+                  {"enquiries": enquiries, "bookings": bookings, "saved": saved})
 
 
 @login_required
@@ -41,11 +50,12 @@ def booking_detail(request, pk):
         _handle_client_action(request, booking, contract)
         return redirect("portal:booking_detail", pk=booking.pk)
 
+    from apps.payments.services import compute_refund
     return render(request, "portal/booking_detail.html", {
         "booking": booking, "contract": contract, "invoices": invoices,
         "galleries": galleries, "thread": thread, "review": review,
         "messages_list": thread.messages.select_related("sender") if thread else [],
-        "S": Booking.Status,
+        "S": Booking.Status, "refund": compute_refund(booking),
     })
 
 

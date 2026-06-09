@@ -228,24 +228,37 @@ def deliver_gallery(gallery):
 
 # ── Cancellation ───────────────────────────────────────────────────────────
 def cancel_booking(booking, *, by="creative", reason=""):
-    """Cancel a booking and free its date back up. Marks REFUNDED if a deposit
-    was taken (test gateway), else CANCELLED. Removes the shoot from the calendar
-    and notifies the other party."""
-    had_payment = Payment.objects.filter(
-        invoice__booking=booking, status=Payment.Status.SUCCEEDED).exists()
-    new_status = Booking.Status.REFUNDED if had_payment else Booking.Status.CANCELLED
+    """Cancel a booking, apply the refund policy, free its date and notify.
+
+    A creative cancelling refunds everything paid (their fault); a client
+    cancelling is subject to the sliding-scale policy (deposit non-refundable)."""
+    from apps.payments.services import compute_refund
+
+    breakdown = compute_refund(booking)
+    if by == "creative":
+        refund = breakdown["paid"]          # full refund when the creative cancels
+    else:
+        refund = breakdown["refundable"]    # policy applies to client cancellations
+
+    booking.refunded_amount = refund
+    new_status = Booking.Status.REFUNDED if refund > 0 else Booking.Status.CANCELLED
     booking.transition(new_status, force=True)
+    booking.save(update_fields=["refunded_amount"])
 
     availability.free_date(booking.workspace, booking.event_date, exclude_booking=booking)
     booking.events.filter(event_type=CalendarEvent.Type.SHOOT).delete()
 
     note = f" Reason: {reason}" if reason else ""
+    refund_note = f" A refund of ${refund:,.2f} will be processed." if refund > 0 else " No refund applies (deposit non-refundable)."
     if by == "creative":
-        notify(booking.client, f"Your booking '{booking.title}' was cancelled by the creative.{note}", email=True,
-               url=f"/portal/booking/{booking.id}/", icon="alert")
+        notify(booking.client, f"Your booking '{booking.title}' was cancelled by the creative.{refund_note}{note}",
+               email=True, url=f"/portal/booking/{booking.id}/", icon="alert")
     else:
         notify(booking.workspace.owner, f"{booking.client.email} cancelled '{booking.title}'.{note}",
                url="/app/bookings/", icon="alert")
+        if refund > 0:
+            notify(booking.client, f"Your cancellation refund of ${refund:,.2f} is being processed.",
+                   email=True, url=f"/portal/booking/{booking.id}/", icon="card")
     return booking
 
 

@@ -12,4 +12,5 @@ urlpatterns = [
     path("for-creatives/", views.for_creatives, name="for_creatives"),
     path("p/<slug:slug>/", views.profile_detail, name="profile"),
     path("p/<slug:slug>/enquire/", views.enquire, name="enquire"),
+    path("p/<slug:slug>/favourite/", views.toggle_favourite, name="favourite"),
 ]

@@ -130,6 +130,12 @@ class Command(BaseCommand):
         self._expiring_quote(olivia, harper, event_date=today + timedelta(days=70), days_left=-2)
         self._overdue_deposit_booking(sam, admin_ws, event_date=today + timedelta(days=55))
 
+        # Saved/favourite creatives for the portal.
+        from apps.marketplace.models import Favourite
+        for client, wss in [(olivia, [harper, marlow]), (sam, [bright]), (northcote, [admin_ws])]:
+            for w in wss:
+                Favourite.objects.get_or_create(client=client, workspace=w)
+
         # Realistic response times: backdate answered enquiries so the "responds
         # in ~Xh" figure is meaningful (created a few hours before the reply).
         from apps.enquiries.models import Enquiry as _Enq

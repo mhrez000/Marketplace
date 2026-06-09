@@ -37,6 +37,56 @@ def get_gateway():
     return TestGateway()
 
 
+# ── Refund policy ────────────────────────────────────────────────────────────
+# Standard creative policy: the deposit is NON-REFUNDABLE; anything paid beyond
+# the deposit is refunded on a sliding scale by how close the cancellation is to
+# the event date. (Starting point — validate with a lawyer per the plan.)
+REFUND_TIERS = [
+    (30, "1.0", "30+ days before the event"),
+    (14, "0.5", "14–29 days before the event"),
+    (0, "0.0", "less than 14 days before the event"),
+]
+
+
+def compute_refund(booking):
+    """Work out what a client would get back if they cancelled now.
+
+    Returns a dict: paid, deposit_forfeited, refundable, forfeited, tier_label.
+    """
+    from decimal import Decimal
+
+    from django.db.models import Sum
+    from django.utils import timezone
+
+    from .models import Invoice, Payment
+
+    paid = Payment.objects.filter(
+        invoice__booking=booking, status=Payment.Status.SUCCEEDED
+    ).aggregate(t=Sum("amount"))["t"] or Decimal("0")
+
+    deposit_paid = booking.invoices.filter(
+        invoice_type=Invoice.Type.DEPOSIT, status=Invoice.Status.PAID).exists()
+    deposit = booking.deposit_amount if deposit_paid else Decimal("0")
+    beyond_deposit = max(Decimal("0"), paid - deposit)
+
+    days = (booking.event_date - timezone.now().date()).days if booking.event_date else -1
+    pct, tier_label = Decimal("0"), "after the event"
+    for threshold, factor, label in REFUND_TIERS:
+        if days >= threshold:
+            pct, tier_label = Decimal(factor), label
+            break
+
+    refundable = (beyond_deposit * pct).quantize(Decimal("0.01"))
+    return {
+        "paid": paid,
+        "deposit_forfeited": deposit,
+        "refundable": refundable,
+        "forfeited": (paid - refundable).quantize(Decimal("0.01")),
+        "tier_label": tier_label,
+        "days": days,
+    }
+
+
 def mark_overdue_invoices():
     """Flip unpaid invoices past their due date to OVERDUE (idempotent)."""
     from datetime import date

@@ -6,6 +6,13 @@
   <h1 class="text-3xl font-600">My portal</h1>
   <p class="mt-1 text-navy-500">Track your enquiries, quotes and bookings.</p>
 
+  {% if saved %}
+  <h2 class="mt-8 text-xl">Saved creatives</h2>
+  <div class="mt-3 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    {% for p in saved %}{% include "marketplace/_profile_card.html" %}{% endfor %}
+  </div>
+  {% endif %}
+
   <!-- Enquiries / quotes -->
   <h2 class="mt-8 text-xl">Enquiries</h2>
   <div class="mt-3 space-y-3">

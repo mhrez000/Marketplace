@@ -58,6 +58,7 @@ class Booking(UUIDTimeStampedModel):
 
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     deposit_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    refunded_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     internal_notes = models.TextField(blank=True)
 
     def __str__(self):

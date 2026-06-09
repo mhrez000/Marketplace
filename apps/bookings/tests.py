@@ -69,6 +69,51 @@ class SpineTestCase(TestCase):
         self.assertEqual(Payment.objects.filter(invoice__booking=b).count(), 1)
 
 
+class RefundPolicyTestCase(TestCase):
+    def setUp(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.profiles.models import CreativeProfile
+        ContractTemplate.objects.create(name="Std", contract_type="events", body=flow.DEFAULT_CONTRACT)
+        self.creative = User.objects.create_user(email="c@t.com", password="x")
+        self.client_user = User.objects.create_user(email="cl@t.com", password="pw", first_name="C", last_name="L")
+        self.ws = Workspace.objects.create(owner=self.creative, business_name="S", is_published=True)
+        CreativeProfile.objects.create(workspace=self.ws, primary_category="events")
+        self.future = timezone.now().date() + timedelta(days=40)
+
+    def _confirm(self):
+        e = flow.create_enquiry(client=self.client_user, workspace=self.ws,
+                                event_type="events", message="hi", event_date=self.future)
+        q = flow.send_quote(enquiry=e, title="Q", line_items=[{"label": "x", "amount": 1000}])
+        b = flow.accept_quote(q)
+        flow.sign_contract_client(b.contract, name="C L")
+        flow.pay_deposit(b)
+        return b
+
+    def test_client_cancel_deposit_only_forfeits(self):
+        b = self._confirm()
+        flow.cancel_booking(b, by="client")
+        b.refresh_from_db()
+        self.assertEqual(b.refunded_amount, Decimal("0.00"))  # deposit non-refundable
+        self.assertEqual(b.status, Booking.Status.CANCELLED)
+
+    def test_creative_cancel_full_refund(self):
+        b = self._confirm()
+        flow.cancel_booking(b, by="creative")
+        b.refresh_from_db()
+        self.assertEqual(b.refunded_amount, b.deposit_amount)  # full refund of what was paid
+        self.assertEqual(b.status, Booking.Status.REFUNDED)
+
+    def test_refund_tier_beyond_deposit(self):
+        from apps.payments.services import compute_refund
+        b = self._confirm()
+        flow.pay_final(b)  # now total is paid; event is 40 days out -> 100% of beyond-deposit
+        r = compute_refund(b)
+        self.assertEqual(r["refundable"], (b.total - b.deposit_amount).quantize(Decimal("0.01")))
+
+
 class PortalSecurityTestCase(TestCase):
     """A client must never see another client's booking."""
 

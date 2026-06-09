@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
+from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -8,6 +9,7 @@ from django.urls import reverse
 
 from apps.bookings.services import create_enquiry
 from apps.core.selectors import annotate_ratings
+from apps.marketplace.models import Favourite
 from apps.profiles.models import CATEGORY_CHOICES, CreativeProfile
 from apps.workspaces.models import Workspace
 
@@ -80,14 +82,28 @@ def profile_detail(request, slug):
     from apps.profiles.services import avg_response_hours, unavailable_dates
     busy_dates = unavailable_dates(workspace, limit=8)
     measured_response = avg_response_hours(workspace)
+    is_favourited = (request.user.is_authenticated
+                     and Favourite.objects.filter(client=request.user, workspace=workspace).exists())
 
     return render(request, "marketplace/profile_detail.html", {
         "workspace": workspace, "profile": profile, "packages": packages,
         "reviews": reviews, "categories": CATEGORIES, "busy_dates": busy_dates,
         "avg_rating": getattr(rating_agg, "avg_rating", None),
         "review_count": getattr(rating_agg, "review_count", 0),
-        "measured_response": measured_response,
+        "measured_response": measured_response, "is_favourited": is_favourited,
     })
+
+
+@login_required
+def toggle_favourite(request, slug):
+    workspace = get_object_or_404(Workspace, slug=slug, is_published=True)
+    fav, created = Favourite.objects.get_or_create(client=request.user, workspace=workspace)
+    if created:
+        messages.success(request, f"Saved {workspace.business_name} to your favourites.")
+    else:
+        fav.delete()
+        messages.info(request, f"Removed {workspace.business_name} from favourites.")
+    return redirect(request.POST.get("next") or reverse("marketplace:profile", args=[slug]))
 
 
 def enquire(request, slug):

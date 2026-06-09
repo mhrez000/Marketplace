@@ -30,7 +30,16 @@
               {% else %}<span>Responds in ~{{ profile.response_time_hours }}h</span>{% endif %}
             </p>
           </div>
-          <a href="#enquire" class="btn-accent">Request a quote</a>
+          <div class="flex items-center gap-2">
+            {% if user.is_authenticated %}
+            <form method="post" action="{% url 'marketplace:favourite' workspace.slug %}"><input type="hidden" name="next" value="{{ request.path }}">{% csrf_token %}
+              <button title="Save" class="grid h-10 w-10 place-items-center rounded-full ring-1 ring-inset transition {% if is_favourited %}bg-red-50 text-red-500 ring-red-200{% else %}bg-white text-navy-400 ring-navy-100 hover:text-red-500{% endif %}">
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="{% if is_favourited %}currentColor{% else %}none{% endif %}" stroke="currentColor" stroke-width="1.8"><path d="M12 20s-7-4.4-7-9.5A4.5 4.5 0 0112 7a4.5 4.5 0 017 3.5C19 15.6 12 20 12 20z"/></svg>
+              </button>
+            </form>
+            {% endif %}
+            <a href="#enquire" class="btn-accent">Request a quote</a>
+          </div>
         </div>
 
         {% if profile.style_list %}
