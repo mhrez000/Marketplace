@@ -26,6 +26,24 @@
 
   <div class="space-y-6">
     <div class="card p-6">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg">Profile checklist</h2>
+        <span class="pill {% if completeness.listable %}bg-teal-100 text-teal-700{% else %}bg-amber-100 text-amber-700{% endif %}">{{ completeness.pct }}%</span>
+      </div>
+      {% if not completeness.listable %}<p class="mt-1 text-xs text-amber-600">Complete the essentials to appear in search results.</p>{% else %}<p class="mt-1 text-xs text-teal-600">✓ Live in search</p>{% endif %}
+      <ul class="mt-3 space-y-2">
+        {% for label, ok in completeness.items %}
+        <li class="flex items-center gap-2 text-sm">
+          <span class="grid h-5 w-5 place-items-center rounded-full {% if ok %}bg-teal-500 text-white{% else %}bg-beige-200 text-navy-300{% endif %}">
+            {% if ok %}<svg viewBox="0 0 24 24" class="h-3 w-3" fill="none"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>{% endif %}
+          </span>
+          <span class="{% if ok %}text-navy-400 line-through{% else %}text-navy-600{% endif %}">{{ label }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="card p-6">
       <h2 class="text-lg">Status</h2>
       <div class="mt-3 space-y-2 text-sm">
         <div class="flex items-center justify-between"><span class="text-navy-500">Published</span>{% if ws.is_published %}<span class="pill-verified">Live</span>{% else %}<span class="pill-beige">Pending</span>{% endif %}</div>

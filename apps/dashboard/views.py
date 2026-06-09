@@ -66,27 +66,16 @@ def overview(request):
     from apps.reviews.models import Review
     review_agg = Review.objects.filter(workspace=ws).aggregate(n=Count("id"), avg=Avg("rating"))
     pending_reviews = sum(1 for b in bookings.filter(status=Booking.Status.COMPLETED) if b.awaiting_review)
+    prof = availability.completeness(ws)
 
     return render(request, "dashboard/overview.html", {
         "active": "overview", "ws": ws, "stats": stats, "leads": leads,
         "upcoming": upcoming, "bookings_count": bookings.count(),
-        "profile_pct": _profile_completeness(ws),
+        "profile_pct": prof["pct"], "prof_listable": prof["listable"],
         "stale_leads": stale_leads, "avg_response": avg_resp,
         "review_count": review_agg["n"], "avg_review": review_agg["avg"],
         "pending_reviews": pending_reviews,
     })
-
-
-def _profile_completeness(ws):
-    score, total = 0, 5
-    p = getattr(ws, "profile", None)
-    if p:
-        if p.bio: score += 1
-        if p.headline: score += 1
-        if p.starting_price: score += 1
-    if ws.services.exists(): score += 1
-    if ws.is_verified: score += 1
-    return int(score / total * 100)
 
 
 @login_required
@@ -367,7 +356,10 @@ def profile(request):
         p.save()
         messages.success(request, "Profile updated.")
         return redirect("dashboard:profile")
-    return render(request, "dashboard/profile.html", {"active": "profile", "ws": ws, "profile": p})
+    return render(request, "dashboard/profile.html", {
+        "active": "profile", "ws": ws, "profile": p,
+        "completeness": availability.completeness(ws),
+    })
 
 
 @login_required

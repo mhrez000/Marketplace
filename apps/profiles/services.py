@@ -105,6 +105,79 @@ def blocked_dates(workspace, *, from_date=None):
     ).order_by("date"))
 
 
+def completeness(workspace):
+    """A profile-quality checklist + whether the profile is good enough to be
+    listed in search (the quality gate)."""
+    from .models import Package
+    p = getattr(workspace, "profile", None)
+    has_pkg = Package.objects.filter(service__workspace=workspace).exists()
+    items = [
+        ("Add a bio", bool(p and p.bio)),
+        ("Add a headline", bool(p and p.headline)),
+        ("Set a starting price", bool(p and p.starting_price)),
+        ("Add at least one package", has_pkg),
+        ("Get verified (ABN / insurance)", workspace.is_verified),
+    ]
+    done = sum(1 for _, ok in items if ok)
+    listable = bool(p and p.bio and p.starting_price and has_pkg)
+    return {
+        "pct": int(done / len(items) * 100),
+        "items": items,
+        "missing": [label for label, ok in items if not ok],
+        "listable": listable,
+    }
+
+
+def is_listable(workspace):
+    return completeness(workspace)["listable"]
+
+
+def filter_listable(profile_qs):
+    """Restrict a CreativeProfile queryset to profiles complete enough to rank:
+    a bio, a starting price, and at least one package."""
+    from .models import Package
+    pkg_ws_ids = Package.objects.values_list("service__workspace_id", flat=True).distinct()
+    return profile_qs.exclude(bio="").filter(starting_price__gt=0, workspace_id__in=pkg_ws_ids)
+
+
+def availability_calendar(workspace, *, months=2):
+    """Server-rendered month grids of available / booked / blocked / past days."""
+    import calendar as _cal
+
+    from apps.bookings.models import Booking
+    today = timezone.now().date()
+    blocked = set(Availability.objects.filter(
+        workspace=workspace, status=Availability.Status.BLOCKED, date__gte=today
+    ).values_list("date", flat=True))
+    booked = set(Booking.objects.filter(
+        workspace=workspace, event_date__gte=today, status__in=HELD_STATES
+    ).values_list("event_date", flat=True))
+
+    grids = []
+    y, m = today.year, today.month
+    cal = _cal.Calendar(firstweekday=0)  # Monday-first (AU)
+    for _ in range(months):
+        weeks = []
+        for week in cal.monthdatescalendar(y, m):
+            days = []
+            for d in week:
+                if d < today:
+                    status = "past"
+                elif d in blocked:
+                    status = "blocked"
+                elif d in booked:
+                    status = "booked"
+                else:
+                    status = "available"
+                days.append({"date": d, "day": d.day, "in_month": d.month == m, "status": status})
+            weeks.append(days)
+        grids.append({"label": f"{_cal.month_name[m]} {y}", "weeks": weeks})
+        m += 1
+        if m > 12:
+            m, y = 1, y + 1
+    return grids
+
+
 def avg_response_hours(workspace):
     """Mean time-to-first-response across answered enquiries, or None."""
     from apps.enquiries.models import Enquiry

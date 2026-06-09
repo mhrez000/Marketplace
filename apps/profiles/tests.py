@@ -65,3 +65,34 @@ class AvailabilityTests(TestCase):
         flow.pay_deposit(self._booking(self.c1))
         busy = availability.unavailable_workspace_ids(self.date)
         self.assertIn(self.ws.id, busy)
+
+
+class CompletenessTests(TestCase):
+    def setUp(self):
+        from apps.profiles.models import CreativeProfile, Package, Service
+        from decimal import Decimal
+        self.creative = User.objects.create_user(email="c@t.com", password="x")
+        self.ws = Workspace.objects.create(owner=self.creative, business_name="S", is_published=True)
+        self.profile = CreativeProfile.objects.create(workspace=self.ws, primary_category="events")
+        self._Service, self._Package, self._Decimal = Service, Package, Decimal
+
+    def test_incomplete_profile_not_listable(self):
+        c = availability.completeness(self.ws)
+        self.assertFalse(c["listable"])
+        self.assertIn("Add a bio", c["missing"])
+
+    def test_complete_profile_listable_and_in_search(self):
+        from apps.profiles.models import CreativeProfile
+        self.profile.bio = "Hi"
+        self.profile.starting_price = self._Decimal("500")
+        self.profile.save()
+        svc = self._Service.objects.create(workspace=self.ws, category="events", title="E")
+        self._Package.objects.create(service=svc, name="P", base_price=self._Decimal("500"))
+        self.assertTrue(availability.is_listable(self.ws))
+        listed = availability.filter_listable(CreativeProfile.objects.all())
+        self.assertTrue(listed.filter(workspace=self.ws).exists())
+
+    def test_availability_calendar_shape(self):
+        grid = availability.availability_calendar(self.ws, months=2)
+        self.assertEqual(len(grid), 2)
+        self.assertTrue(all("weeks" in m and "label" in m for m in grid))

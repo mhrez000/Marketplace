@@ -1,0 +1,36 @@
+{% comment %}Expects `calendar_months` from availability_calendar().{% endcomment %}
+<div class="card p-6">
+  <div class="flex items-center justify-between">
+    <h2 class="text-xl">Availability</h2>
+    <div class="flex items-center gap-3 text-xs text-navy-400">
+      <span class="inline-flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-full bg-teal-400"></span>Free</span>
+      <span class="inline-flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-full bg-navy-300"></span>Booked</span>
+      <span class="inline-flex items-center gap-1"><span class="h-2.5 w-2.5 rounded-full bg-beige-300"></span>Off</span>
+    </div>
+  </div>
+
+  <div class="mt-4 grid gap-6 sm:grid-cols-2">
+    {% for month in calendar_months %}
+    <div>
+      <p class="mb-2 text-sm font-semibold text-navy-700">{{ month.label }}</p>
+      <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase text-navy-300">
+        <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+      </div>
+      <div class="mt-1 grid grid-cols-7 gap-1">
+        {% for week in month.weeks %}{% for d in week %}
+          <div class="grid aspect-square place-items-center rounded-md text-xs
+            {% if not d.in_month %}text-transparent
+            {% elif d.status == 'past' %}text-navy-200
+            {% elif d.status == 'booked' %}bg-navy-100 text-navy-400 line-through
+            {% elif d.status == 'blocked' %}bg-beige-200 text-navy-300
+            {% else %}bg-teal-50 font-semibold text-teal-700{% endif %}"
+            {% if d.in_month %}title="{{ d.date|date:'D, d M' }} — {{ d.status }}"{% endif %}>
+            {% if d.in_month %}{{ d.day }}{% endif %}
+          </div>
+        {% endfor %}{% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="mt-4 text-xs text-navy-400">Pick a free date and request a quote — availability is confirmed when you book.</p>
+</div>

@@ -24,9 +24,9 @@ CATEGORIES = [
 
 
 def _published_profiles():
-    return annotate_ratings(
-        CreativeProfile.objects.filter(workspace__is_published=True).select_related("workspace")
-    )
+    from apps.profiles.services import filter_listable
+    qs = CreativeProfile.objects.filter(workspace__is_published=True).select_related("workspace")
+    return annotate_ratings(filter_listable(qs))
 
 
 def home(request):
@@ -79,9 +79,11 @@ def profile_detail(request, slug):
     reviews = workspace.reviews.select_related("client").order_by("-created_at")[:6]
     rating_agg = annotate_ratings(CreativeProfile.objects.filter(pk=profile.pk)).first()
 
-    from apps.profiles.services import avg_response_hours, unavailable_dates
+    from apps.profiles.services import (availability_calendar, avg_response_hours,
+                                        unavailable_dates)
     busy_dates = unavailable_dates(workspace, limit=8)
     measured_response = avg_response_hours(workspace)
+    calendar_months = availability_calendar(workspace, months=2)
     is_favourited = (request.user.is_authenticated
                      and Favourite.objects.filter(client=request.user, workspace=workspace).exists())
 
@@ -91,6 +93,7 @@ def profile_detail(request, slug):
         "avg_rating": getattr(rating_agg, "avg_rating", None),
         "review_count": getattr(rating_agg, "review_count", 0),
         "measured_response": measured_response, "is_favourited": is_favourited,
+        "calendar_months": calendar_months,
     })
 
 
