@@ -40,11 +40,15 @@
       <!-- Galleries -->
       {% for g in galleries %}
       <div class="card p-6">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <h2 class="text-lg">{{ g.title }}</h2>
-          <a href="{% url 'portal:gallery_detail' g.pk %}" class="btn-accent !py-1.5 !px-4 text-xs">Open gallery</a>
+          {% if g.is_link_delivery %}
+            <a href="{{ g.delivery_url }}" target="_blank" rel="noopener noreferrer" class="btn-accent !py-1.5 !px-4 text-xs">{{ g.provider.icon }} Open in {{ g.provider.name }} ↗</a>
+          {% else %}
+            <a href="{% url 'portal:gallery_detail' g.pk %}" class="btn-accent !py-1.5 !px-4 text-xs">Open gallery</a>
+          {% endif %}
         </div>
-        <p class="mt-1 text-sm text-navy-400">Delivered {{ g.delivered_at|date:"d M Y" }}</p>
+        <p class="mt-1 text-sm text-navy-400">Delivered {{ g.delivered_at|date:"d M Y" }}{% if g.is_link_delivery %} · opens in a new tab{% endif %}</p>
       </div>
       {% endfor %}
 

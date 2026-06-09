@@ -11,7 +11,7 @@ from apps.bookings.models import Booking, CalendarEvent
 from apps.core.selectors import get_active_workspace
 from apps.crm.models import Client
 from apps.enquiries.models import Enquiry, Quote
-from apps.galleries.models import Asset, Gallery
+from apps.galleries.models import Gallery
 from apps.messaging.models import Message
 from apps.payments.models import Invoice, Payment, Subscription
 from apps.production import services as prod
@@ -195,14 +195,22 @@ def _handle_creative_action(request, booking, contract, action):
     elif action == "start_editing":
         booking.transition(Booking.Status.EDITING, force=True)
         messages.success(request, "Editing started.")
-    elif action == "create_gallery":
-        _create_demo_gallery(booking)
-        messages.success(request, "Gallery created — add it your assets, then deliver.")
-    elif action == "deliver_gallery":
-        g = booking.galleries.first()
-        if g:
+    elif action == "deliver_link":
+        url = request.POST.get("delivery_url", "").strip()
+        from django.core.validators import URLValidator
+        from django.core.exceptions import ValidationError
+        try:
+            URLValidator(schemes=["http", "https"])(url)
+        except ValidationError:
+            messages.error(request, "Please paste a valid link (starting with https://).")
+        else:
+            title = request.POST.get("title", "").strip() or f"{booking.title} — Gallery"
+            g = Gallery.objects.create(
+                booking=booking, title=title, delivery_url=url,
+                gallery_type=Gallery.Type.PHOTO, visibility=Gallery.Visibility.PRIVATE,
+            )
             flow.deliver_gallery(g)
-            messages.success(request, "Gallery delivered to the client.")
+            messages.success(request, f"Gallery link delivered to {booking.client.email}.")
     elif action == "send_final_invoice":
         balance = booking.total - booking.deposit_amount
         Invoice.objects.get_or_create(
@@ -225,19 +233,6 @@ def _handle_creative_action(request, booking, contract, action):
             Message.objects.create(thread=thread, sender=request.user, body=body)
             if thread.enquiry:  # creative replying counts as a response
                 thread.enquiry.mark_responded()
-
-
-def _create_demo_gallery(booking):
-    if booking.galleries.exists():
-        return
-    g = Gallery.objects.create(
-        booking=booking, title=f"{booking.title} — Gallery",
-        gallery_type=Gallery.Type.PHOTO, visibility=Gallery.Visibility.PRIVATE,
-    )
-    accents = ["navy", "teal", "sky"]
-    for i in range(9):
-        Asset.objects.create(gallery=g, title=f"Image {i+1}", accent=accents[i % 3])
-    return g
 
 
 @login_required

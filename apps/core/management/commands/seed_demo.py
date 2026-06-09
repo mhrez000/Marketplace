@@ -16,7 +16,7 @@ from django.utils import timezone
 from apps.bookings import services as flow
 from apps.bookings.models import Booking
 from apps.contracts.models import ContractTemplate
-from apps.galleries.models import Asset, Gallery
+from apps.galleries.models import Gallery
 from apps.payments.models import Invoice, Subscription
 from apps.profiles.models import (Availability, CreativeProfile, Package, Service,
                                   VerificationDocument)
@@ -312,12 +312,10 @@ class Command(BaseCommand):
         b = self._confirmed_booking(client, ws, event_date=event_date)
         b.transition(Booking.Status.SHOOT_COMPLETED, force=True)
         b.transition(Booking.Status.EDITING, force=True)
-        g = Gallery.objects.create(booking=b, title=f"{b.title} — Gallery",
-                                   gallery_type=Gallery.Type.PHOTO)
-        accents = ["navy", "teal", "sky"]
-        for i in range(12):
-            Asset.objects.create(gallery=g, title=f"Image {i+1}", accent=accents[i % 3],
-                                 is_favourite=(i < 2))
+        # Link-first delivery — the creative pastes a Google Drive folder link.
+        g = Gallery.objects.create(
+            booking=b, title=f"{b.title} — Gallery", gallery_type=Gallery.Type.PHOTO,
+            delivery_url=f"https://drive.google.com/drive/folders/demo-gallery-{b.pk}")
         flow.deliver_gallery(g)
         flow.pay_final(b)
         if review:
