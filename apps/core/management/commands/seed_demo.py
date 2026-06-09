@@ -155,6 +155,16 @@ class Command(BaseCommand):
         for e, age in zip(new_leads, [50, 30]):
             _Enq.objects.filter(pk=e.pk).update(created_at=timezone.now() - timedelta(hours=age))
 
+        # Spread succeeded payments across their event months so the analytics
+        # revenue trend isn't all in the current month.
+        from apps.payments.models import Payment as _Pay
+        for p in _Pay.objects.filter(status=_Pay.Status.SUCCEEDED).select_related("invoice__booking"):
+            ev = p.invoice.booking.event_date
+            if ev and ev < today:
+                when = timezone.make_aware(
+                    timezone.datetime.combine(ev + timedelta(days=3), timezone.datetime.min.time()))
+                _Pay.objects.filter(pk=p.pk).update(paid_at=when)
+
         # Reflect lifecycle statuses now (expire stale quotes, flag overdue invoices).
         from apps.enquiries.services import expire_quotes
         from apps.payments.services import mark_overdue_invoices
@@ -230,6 +240,7 @@ class Command(BaseCommand):
             state="VIC", primary_category=category, styles=styles, equipment=equipment,
             starting_price=Decimal(str(starting_price)), accent=accent, is_featured=featured,
             response_time_hours=12 if featured else 24,
+            view_count=(420 if featured else 160),
             latitude=loc["lat"] if loc else None, longitude=loc["lng"] if loc else None)
 
         service = Service.objects.create(workspace=ws, category=category,

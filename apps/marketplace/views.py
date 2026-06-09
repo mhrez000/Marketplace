@@ -74,6 +74,11 @@ def profile_detail(request, slug):
         Workspace.objects.filter(is_published=True).select_related("profile"), slug=slug
     )
     profile = workspace.profile
+    # Count a profile view — but not the owner's own visits.
+    is_owner = request.user.is_authenticated and request.user.id == workspace.owner_id
+    if not is_owner:
+        from django.db.models import F
+        CreativeProfile.objects.filter(pk=profile.pk).update(view_count=F("view_count") + 1)
     services = workspace.services.prefetch_related("packages")
     packages = [p for s in services for p in s.packages.all()]
     reviews = workspace.reviews.select_related("client").order_by("-created_at")[:6]

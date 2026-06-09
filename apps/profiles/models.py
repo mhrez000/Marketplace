@@ -45,6 +45,7 @@ class CreativeProfile(TimeStampedModel):
     cover_image = models.ImageField(upload_to="covers/", blank=True, null=True)
     accent = models.CharField(max_length=8, choices=ACCENTS, default="navy")
     is_featured = models.BooleanField(default=False)
+    view_count = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return f"Profile: {self.workspace.business_name}"

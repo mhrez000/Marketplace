@@ -346,6 +346,17 @@ def clients(request):
 
 
 @login_required
+def analytics(request):
+    ws = _require_workspace(request)
+    if not ws:
+        return redirect("dashboard:onboarding")
+    from apps.dashboard.analytics import workspace_analytics
+    return render(request, "dashboard/analytics.html", {
+        "active": "analytics", "ws": ws, "a": workspace_analytics(ws),
+    })
+
+
+@login_required
 def profile(request):
     ws = _require_workspace(request)
     if not ws:

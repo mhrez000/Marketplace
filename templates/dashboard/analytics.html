@@ -1,0 +1,89 @@
+{% extends "base_app.html" %}
+{% block title %}Analytics — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<h1 class="text-2xl font-600">Analytics</h1>
+<p class="mt-1 text-sm text-navy-500">How your business is tracking.</p>
+
+<!-- Headline numbers -->
+<div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <div class="card p-5"><p class="text-sm text-navy-400">Revenue (paid)</p><p class="mt-1 font-display text-3xl font-600 text-navy-700">${{ a.paid|floatformat:0 }}</p></div>
+  <div class="card p-5"><p class="text-sm text-navy-400">Outstanding</p><p class="mt-1 font-display text-3xl font-600 {% if a.outstanding %}text-amber-600{% else %}text-navy-700{% endif %}">${{ a.outstanding|floatformat:0 }}</p></div>
+  <div class="card p-5"><p class="text-sm text-navy-400">Pipeline (forecast)</p><p class="mt-1 font-display text-3xl font-600 text-teal-600">${{ a.pipeline|floatformat:0 }}</p></div>
+  <div class="card p-5"><p class="text-sm text-navy-400">Avg booking value</p><p class="mt-1 font-display text-3xl font-600 text-navy-700">${{ a.avg_value|floatformat:0 }}</p></div>
+</div>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-3">
+  <!-- Revenue trend -->
+  <div class="card p-6 lg:col-span-2">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg">Revenue — last 6 months</h2>
+      <span class="text-sm text-navy-500">${{ a.trend_total|floatformat:0 }} total</span>
+    </div>
+    <div class="mt-6 flex items-end justify-between gap-3" style="height:180px">
+      {% for t in a.trend %}
+      <div class="flex flex-1 flex-col items-center justify-end gap-2">
+        <span class="text-xs font-semibold text-navy-500">${{ t.revenue|floatformat:0 }}</span>
+        <div class="w-full rounded-t-lg bg-gradient-to-t from-navy-700 to-teal-500" style="height:{{ t.pct }}%;min-height:4px"></div>
+        <span class="text-xs text-navy-400">{{ t.label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Conversion funnel -->
+  <div class="card p-6">
+    <h2 class="text-lg">Conversion funnel</h2>
+    <div class="mt-4 space-y-3">
+      {% for f in a.funnel %}
+      <div>
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-navy-600">{{ f.label }}</span>
+          <span class="font-semibold text-navy-700">{{ f.value }}{% if f.rate != None %} <span class="text-xs font-normal text-teal-600">· {{ f.rate }}%</span>{% endif %}</span>
+        </div>
+        <div class="mt-1.5 h-2 rounded-full bg-beige-200"><div class="h-2 rounded-full bg-teal-500" style="width:{% if forloop.first %}100{% else %}{{ f.rate }}{% endif %}%"></div></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-3">
+  <!-- Audience -->
+  <div class="card p-6">
+    <h2 class="text-lg">Audience</h2>
+    <div class="mt-4 space-y-3 text-sm">
+      <div class="flex items-center justify-between"><span class="text-navy-500">Profile views</span><span class="font-semibold text-navy-700">{{ a.profile_views }}</span></div>
+      <div class="flex items-center justify-between"><span class="text-navy-500">View → enquiry</span><span class="font-semibold text-navy-700">{{ a.view_to_enquiry }}%</span></div>
+      <div class="flex items-center justify-between"><span class="text-navy-500">Completed jobs</span><span class="font-semibold text-navy-700">{{ a.completed }}</span></div>
+      <div class="flex items-center justify-between"><span class="text-navy-500">Repeat clients</span><span class="font-semibold text-navy-700">{{ a.repeat_clients }} <span class="text-xs font-normal text-navy-400">· {{ a.repeat_pct }}%</span></span></div>
+    </div>
+  </div>
+
+  <!-- Popular packages -->
+  <div class="card p-6">
+    <h2 class="text-lg">Most-quoted packages</h2>
+    <div class="mt-4 space-y-2.5">
+      {% for p in a.popular %}
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-navy-600">{{ p.name }} <span class="text-navy-400">${{ p.base_price|floatformat:0 }}</span></span>
+        <span class="pill bg-sky-200 text-navy-700">{{ p.n }}×</span>
+      </div>
+      {% empty %}<p class="text-sm text-navy-400">No quotes yet.</p>{% endfor %}
+    </div>
+  </div>
+
+  <!-- Lead sources -->
+  <div class="card p-6">
+    <h2 class="text-lg">Lead sources</h2>
+    <div class="mt-4 space-y-2.5">
+      {% for s in a.sources %}
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-navy-600 capitalize">{{ s.source }}</span>
+        <span class="font-semibold text-navy-700">{{ s.n }}</span>
+      </div>
+      {% empty %}<p class="text-sm text-navy-400">No enquiries yet.</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
