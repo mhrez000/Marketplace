@@ -92,8 +92,37 @@ class Command(BaseCommand):
         sam = self._user("sam@lens.test", "Sam", "Okafor")
         northcote = self._user("northcote@lens.test", "Northcote", "Realty")
 
+        # The admin account also owns a studio, so logging in as admin@lens.test
+        # shows a fully-populated creative dashboard (not just the empty state).
+        admin_ws = self._build_workspace(
+            admin, "Aperture Collective", "weddings", "teal",
+            headline="Editorial weddings & events", suburb="Carlton",
+            bio="The platform demo studio — explore a full pipeline here.",
+            styles="Editorial, Candid, Documentary", starting_price=2800, featured=False,
+            packages=[("Half Day", 2800, "6 hours", "6 hours\n400+ photos\nGallery"),
+                      ("Full Day", 4200, "10 hours", "10 hours\n800+ photos\n2 shooters")])
+
         # ── Flows ──────────────────────────────────────────────────────────
         today = timezone.now().date()
+
+        # Populate the admin studio: a completed job, a confirmed booking,
+        # a quote out, and a fresh lead to action.
+        self._completed_booking(olivia, admin_ws, event_date=today - timedelta(days=15),
+                                rating=5, review_body="The Aperture team were a dream to work with!")
+        self._confirmed_booking(sam, admin_ws, event_date=today + timedelta(days=25))
+        e_admin = flow.create_enquiry(client=northcote, workspace=admin_ws, event_type="events",
+                                      message="Corporate end-of-year party — 4 hours coverage?",
+                                      event_date=today + timedelta(days=40), location="Carlton VIC",
+                                      budget_band="$2,000–$3,000")
+        flow.send_quote(enquiry=e_admin, title="Events half-day",
+                        line_items=[{"label": "4 hours event coverage", "amount": 2200}])
+        flow.create_enquiry(client=sam, workspace=admin_ws, event_type="weddings",
+                            message="Hi! Checking availability for an autumn wedding in the Dandenongs.",
+                            event_date=today + timedelta(days=120), location="Olinda VIC",
+                            budget_band="$3k–$4k")
+        # Shot last week, now mid-edit -> live delivery deadlines (overdue + due-soon).
+        self._production_booking(olivia, admin_ws, event_date=today - timedelta(days=6))
+        self._production_booking(sam, harper, event_date=today - timedelta(days=3))
 
         # 1) Completed lifecycle: Olivia ↔ Harper (shows revenue, gallery, review)
         self._completed_booking(olivia, harper, event_date=today - timedelta(days=20))
@@ -138,7 +167,14 @@ class Command(BaseCommand):
         user = self._user(email, first, last)
         user.role_type = "creative"
         user.save(update_fields=["role_type"])
+        return self._build_workspace(
+            user, business, category, accent, headline=headline, bio=bio, suburb=suburb,
+            styles=styles, starting_price=starting_price, equipment=equipment,
+            packages=packages, featured=featured, verified=verified, published=published)
 
+    def _build_workspace(self, user, business, category, accent, *, headline, bio,
+                         suburb, styles, starting_price, equipment="", packages=None,
+                         featured=False, verified=True, published=True):
         ws = Workspace.objects.create(owner=user, type=Workspace.Type.SOLO,
                                       business_name=business, abn="12 345 678 901",
                                       is_published=published)
@@ -193,6 +229,14 @@ class Command(BaseCommand):
         flow.pay_deposit(b)
         return b
 
+    def _production_booking(self, client, ws, *, event_date):
+        """Confirmed + shot, now mid-edit — populates the Deliveries tab with
+        real overdue/due-soon milestones (event_date should be a few days ago)."""
+        b = self._confirmed_booking(client, ws, event_date=event_date)
+        b.transition(Booking.Status.SHOOT_COMPLETED, force=True)
+        b.transition(Booking.Status.EDITING, force=True)
+        return b
+
     def _completed_booking(self, client, ws, *, event_date, rating=5,
                            review_body="Incredible work — exceeded our expectations!"):
         b = self._confirmed_booking(client, ws, event_date=event_date)
@@ -221,7 +265,7 @@ class Command(BaseCommand):
         line = "=" * 58
         self.stdout.write(self.style.SUCCESS(f"\n{line}\n  DEMO SEEDED — all passwords: {PASSWORD}\n{line}"))
         rows = [
-            ("ADMIN (Django admin /admin/)", "admin@lens.test"),
+            ("ADMIN (owns a studio + /admin/)", "admin@lens.test"),
             ("Creative - Harper Studio (weddings)", "harper@lens.test"),
             ("Creative - Marlow Films (brand/reels)", "marlow@lens.test"),
             ("Creative - Bright & Co. (real estate)", "bright@lens.test"),

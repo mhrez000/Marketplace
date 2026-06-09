@@ -9,7 +9,7 @@
   <div class="absolute inset-0 opacity-20" style="background-image:radial-gradient(circle at 25% 30%, white 1px, transparent 1px);background-size:22px 22px;"></div>{% endif %}
 </section>
 
-<section class="container-content -mt-16 pb-16">
+<section class="container-content relative z-10 -mt-16 pb-16">
   <div class="grid gap-8 lg:grid-cols-3">
     <!-- Left: main -->
     <div class="lg:col-span-2">
@@ -98,9 +98,18 @@
       <!-- Enquiry form -->
       <div id="enquire" class="card p-6">
         <h2 class="text-lg">Request a quote</h2>
-        {% if user.is_authenticated %}
         <form method="post" action="{% url 'marketplace:enquire' workspace.slug %}" class="mt-4 space-y-3">
           {% csrf_token %}
+          {% if not user.is_authenticated %}
+          <div class="rounded-xl bg-beige-100 p-3">
+            <p class="text-xs text-navy-400">No account needed — we'll set one up so you can track your quote.</p>
+            <div class="mt-2 space-y-2">
+              <input name="name" class="input" placeholder="Your name" required>
+              <input name="email" type="email" class="input" placeholder="Email" required>
+              <input name="phone" type="tel" class="input" placeholder="Phone (optional)">
+            </div>
+          </div>
+          {% endif %}
           <div>
             <label class="label">Event type</label>
             <select name="event_type" class="input">
@@ -124,12 +133,10 @@
             <textarea name="message" rows="3" class="input !rounded-2xl" placeholder="Tell them about your event…"></textarea>
           </div>
           <button type="submit" class="btn-accent w-full">Send enquiry</button>
+          {% if not user.is_authenticated %}
+          <p class="text-center text-xs text-navy-400">Already have an account? <a href="{% url 'account_login' %}?next={{ request.path }}" class="font-semibold text-teal-600 hover:underline">Log in</a></p>
+          {% endif %}
         </form>
-        {% else %}
-        <p class="mt-3 text-sm text-navy-500">Log in to send an enquiry and get a quote.</p>
-        <a href="{% url 'account_login' %}?next={{ request.path }}" class="btn-primary mt-4 w-full">Log in to enquire</a>
-        <a href="{% url 'account_signup' %}" class="btn-ghost mt-2 w-full">Create an account</a>
-        {% endif %}
       </div>
     </div>
   </div>

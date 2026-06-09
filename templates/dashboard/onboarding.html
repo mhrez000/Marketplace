@@ -1,17 +1,81 @@
 {% extends "base_app.html" %}
-{% block title %}Get started — {{ BRAND_NAME }}{% endblock %}
+{% block title %}Create your workspace — {{ BRAND_NAME }}{% endblock %}
 
 {% block main %}
-<div class="mx-auto max-w-xl">
-  <div class="card p-8 text-center">
-    <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-sky-200 text-navy-700">📸</div>
-    <h1 class="mt-4 text-2xl">Welcome to {{ BRAND_NAME }}</h1>
-    <p class="mt-2 text-navy-500">You're logged in as a client. To list your work and run bookings, you'd create a creative workspace here.</p>
-    <p class="mt-4 rounded-xl bg-beige-100 p-4 text-sm text-navy-500">In this demo, creative workspaces are seeded for the test accounts. Log in as a <strong>creative test account</strong> to see the full business dashboard, or browse the marketplace as a client.</p>
-    <div class="mt-6 flex justify-center gap-3">
-      <a href="{% url 'marketplace:home' %}" class="btn-primary">Browse marketplace</a>
-      <a href="{% url 'portal:home' %}" class="btn-ghost">My portal</a>
-    </div>
+<div class="mx-auto max-w-2xl">
+  <div class="text-center">
+    <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-sky-200 text-2xl">📸</div>
+    <h1 class="mt-4 text-3xl font-600">Set up your studio</h1>
+    <p class="mt-2 text-navy-500">Create a bookable profile in under a minute. You can refine everything later.</p>
   </div>
+
+  <form method="post" class="card mt-8 space-y-5 p-6 sm:p-8">
+    {% csrf_token %}
+
+    <div class="grid gap-5 sm:grid-cols-2">
+      <div>
+        <label class="label">Business name <span class="text-red-500">*</span></label>
+        <input name="business_name" class="input" placeholder="e.g. Aperture Studio" required>
+      </div>
+      <div>
+        <label class="label">ABN (optional)</label>
+        <input name="abn" class="input" placeholder="12 345 678 901">
+      </div>
+    </div>
+
+    <div class="grid gap-5 sm:grid-cols-2">
+      <div>
+        <label class="label">Primary category</label>
+        <select name="category" class="input">
+          {% for val, label in categories %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="label">Suburb</label>
+        <input name="suburb" class="input" placeholder="e.g. Fitzroy">
+      </div>
+    </div>
+
+    <div>
+      <label class="label">Headline</label>
+      <input name="headline" class="input" placeholder="e.g. Candid, film-inspired wedding photography">
+    </div>
+
+    <div>
+      <label class="label">Short bio</label>
+      <textarea name="bio" rows="3" class="input !rounded-2xl" placeholder="Tell clients about your style and experience…"></textarea>
+    </div>
+
+    <div class="grid gap-5 sm:grid-cols-2">
+      <div>
+        <label class="label">Style tags (comma separated)</label>
+        <input name="styles" class="input" placeholder="Candid, Film, Documentary">
+      </div>
+      <div>
+        <label class="label">Starting price ($)</label>
+        <input name="starting_price" type="number" step="0.01" class="input" placeholder="2400">
+      </div>
+    </div>
+
+    <div>
+      <label class="label">Brand colour</label>
+      <div class="flex gap-3">
+        <label class="flex cursor-pointer items-center gap-2"><input type="radio" name="accent" value="navy" checked> <span class="h-6 w-6 rounded-full bg-navy-700"></span></label>
+        <label class="flex cursor-pointer items-center gap-2"><input type="radio" name="accent" value="teal"> <span class="h-6 w-6 rounded-full bg-teal-500"></span></label>
+        <label class="flex cursor-pointer items-center gap-2"><input type="radio" name="accent" value="sky"> <span class="h-6 w-6 rounded-full bg-sky-300"></span></label>
+      </div>
+    </div>
+
+    <div class="border-t border-navy-100 pt-5">
+      <p class="text-sm font-semibold text-navy-700">Your first package</p>
+      <div class="mt-2 grid gap-3 sm:grid-cols-3">
+        <input name="package_name" class="input sm:col-span-2" placeholder="Package name (e.g. Half Day)">
+        <input name="package_price" type="number" step="0.01" class="input" placeholder="$ price">
+      </div>
+    </div>
+
+    <button type="submit" class="btn-accent btn-lg w-full">Create my workspace</button>
+    <p class="text-center text-xs text-navy-400">In this demo your studio is auto-verified and published immediately.</p>
+  </form>
 </div>
 {% endblock %}

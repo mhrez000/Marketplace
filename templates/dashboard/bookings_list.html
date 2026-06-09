@@ -5,10 +5,19 @@
 <h1 class="text-2xl font-600">Bookings</h1>
 <p class="mt-1 text-sm text-navy-500">Every booking and where it sits in the pipeline.</p>
 
-<div class="mt-4 flex flex-wrap gap-2">
-  <a href="{% url 'dashboard:bookings' %}" class="pill ring-1 ring-navy-100 {% if not current_status %}bg-navy-700 text-white{% else %}bg-white text-navy-600{% endif %}">All</a>
-  {% for val, label in statuses %}
-    <a href="?status={{ val }}" class="pill ring-1 ring-navy-100 {% if current_status == val %}bg-navy-700 text-white{% else %}bg-white text-navy-600 hover:bg-beige-100{% endif %}">{{ label }}</a>
+<div class="mt-5 flex flex-wrap items-center gap-2">
+  <a href="{% url 'dashboard:bookings' %}"
+     class="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-inset transition-colors
+     {% if not current_group %}bg-navy-700 text-white ring-navy-700{% else %}bg-white text-navy-600 ring-navy-100 hover:bg-beige-100{% endif %}">
+    All <span class="text-xs {% if not current_group %}text-sky-200{% else %}text-navy-400{% endif %}">{{ total_count }}</span>
+  </a>
+  {% for g in groups %}
+  <a href="?group={{ g.key }}"
+     class="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ring-inset transition-colors
+     {% if current_group == g.key %}bg-navy-700 text-white ring-navy-700{% else %}bg-white text-navy-600 ring-navy-100 hover:bg-beige-100{% endif %}">
+    {{ g.label }}
+    <span class="rounded-full px-1.5 text-xs {% if current_group == g.key %}bg-white/20 text-white{% else %}bg-beige-200 text-navy-500{% endif %}">{{ g.count }}</span>
+  </a>
   {% endfor %}
 </div>
 

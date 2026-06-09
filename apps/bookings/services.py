@@ -178,6 +178,9 @@ def _on_confirmed(booking):
                       "start": timezone.make_aware(
                           timezone.datetime.combine(booking.event_date, timezone.datetime.min.time().replace(hour=10)))},
         )
+    # Generate the post-shoot delivery plan (back-up → edit → deliver…).
+    from apps.production.services import generate_deliverables
+    generate_deliverables(booking)
     notify(booking.client, "Booking confirmed — deposit received 🎉", url=f"/portal/booking/{booking.id}/", icon="card")
     notify(booking.workspace.owner, f"Deposit paid — {booking.title} confirmed", url="/app/bookings/", icon="card")
 
@@ -194,6 +197,8 @@ def pay_final(booking):
         charge_invoice(inv)
     booking.transition(Booking.Status.FINAL_PAID)
     booking.transition(Booking.Status.COMPLETED)
+    from apps.production.services import mark_all_done
+    mark_all_done(booking)  # job done — close out the delivery checklist
     notify(booking.workspace.owner, f"Final payment received — {booking.title}", url="/app/bookings/", icon="card")
     notify(booking.client, "Thanks! Your booking is complete. Leave a review?", url=f"/portal/booking/{booking.id}/", icon="bell")
     return inv
@@ -205,6 +210,8 @@ def deliver_gallery(gallery):
     booking = gallery.booking
     if booking.status in {Booking.Status.SHOOT_COMPLETED, Booking.Status.EDITING, Booking.Status.CONFIRMED, Booking.Status.PLANNING}:
         booking.transition(Booking.Status.DELIVERED, force=True)
+    from apps.production.services import mark_done
+    mark_done(booking, "final_delivery")  # tick the delivery milestone
     notify(booking.client, f"Your gallery '{gallery.title}' is ready ✨", url=f"/portal/gallery/{gallery.id}/", icon="image")
     return gallery
 

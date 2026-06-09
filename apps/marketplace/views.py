@@ -1,5 +1,7 @@
+from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model, login
+from django.core.mail import send_mail
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -76,21 +78,77 @@ def profile_detail(request, slug):
     })
 
 
-@login_required
 def enquire(request, slug):
+    """Send an enquiry / request a quote.
+
+    No signup wall: logged-out visitors enquire as guests with name + email.
+    We auto-create a lightweight account, log them in so they can track it, and
+    email a link to set a password and claim it. If the email already has an
+    account we attach the enquiry but ask them to log in (no email-only takeover).
+    """
     workspace = get_object_or_404(Workspace, slug=slug, is_published=True)
-    if request.method == "POST":
-        create_enquiry(
-            client=request.user, workspace=workspace,
-            event_type=request.POST.get("event_type", "weddings"),
-            message=request.POST.get("message", "").strip() or "I'd like to enquire about availability.",
-            event_date=request.POST.get("event_date") or None,
-            location=request.POST.get("location", "").strip(),
-            budget_band=request.POST.get("budget_band", "").strip(),
+    profile_url = reverse("marketplace:profile", args=[slug])
+    if request.method != "POST":
+        return redirect(profile_url)
+
+    User = get_user_model()
+    redirect_to = reverse("portal:home")
+
+    if request.user.is_authenticated:
+        client = request.user
+    else:
+        email = request.POST.get("email", "").strip().lower()
+        name = request.POST.get("name", "").strip()
+        phone = request.POST.get("phone", "").strip()
+        if not email or "@" not in email:
+            messages.error(request, "Please enter your email so the creative can send you a quote.")
+            return redirect(profile_url + "#enquire")
+
+        existing = User.objects.filter(email__iexact=email).first()
+        if existing:
+            client = existing  # attach the enquiry, but make them log in to view it
+            _create_from_post(request, client, workspace)
+            messages.info(request, "You already have an account with that email — log in to view your enquiry and quote.")
+            return redirect(f"{reverse('account_login')}?next={redirect_to}")
+
+        first, _, last = name.partition(" ")
+        client = User.objects.create_user(
+            email=email, password=None, first_name=first or name, last_name=last,
+            phone=phone, role_type=User.RoleType.CLIENT,
         )
-        messages.success(request, f"Enquiry sent to {workspace.business_name}! Track it in your client portal.")
-        return redirect(reverse("portal:home"))
-    return redirect(workspace.profile and reverse("marketplace:profile", args=[slug]) or "marketplace:home")
+        login(request, client, backend="django.contrib.auth.backends.ModelBackend")
+        _send_claim_email(request, client)
+
+    _create_from_post(request, client, workspace)
+    messages.success(request, f"Enquiry sent to {workspace.business_name}! Track it and your quotes in your portal.")
+    return redirect(redirect_to)
+
+
+def _create_from_post(request, client, workspace):
+    create_enquiry(
+        client=client, workspace=workspace,
+        event_type=request.POST.get("event_type", "weddings"),
+        message=request.POST.get("message", "").strip() or "I'd like to enquire about availability.",
+        event_date=request.POST.get("event_date") or None,
+        location=request.POST.get("location", "").strip(),
+        budget_band=request.POST.get("budget_band", "").strip(),
+    )
+
+
+def _send_claim_email(request, user):
+    """Let a guest secure their auto-created account (console email in dev)."""
+    brand = getattr(settings, "BRAND_NAME", "Lens")
+    url = request.build_absolute_uri(reverse("account_reset_password"))
+    send_mail(
+        subject=f"Your {brand} account",
+        message=(
+            f"Hi{(' ' + user.first_name) if user.first_name else ''},\n\n"
+            f"We created an account for {user.email} so you can track your enquiry, "
+            f"review quotes, sign your contract and pay securely.\n\n"
+            f"Set a password to secure it here: {url}\n\n— {brand}"
+        ),
+        from_email=None, recipient_list=[user.email], fail_silently=True,
+    )
 
 
 # Static marketing pages -----------------------------------------------------

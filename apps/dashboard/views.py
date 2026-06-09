@@ -13,7 +13,12 @@ from apps.crm.models import Client
 from apps.enquiries.models import Enquiry, Quote
 from apps.galleries.models import Asset, Gallery
 from apps.messaging.models import Message
-from apps.payments.models import Invoice, Payment
+from apps.payments.models import Invoice, Payment, Subscription
+from apps.production import services as prod
+from apps.production.models import Deliverable
+from apps.profiles.models import (CATEGORY_CHOICES, CreativeProfile, Package,
+                                  Service)
+from apps.workspaces.models import Member, Workspace
 
 
 def _require_workspace(request):
@@ -109,18 +114,39 @@ def lead_detail(request, pk):
     })
 
 
+# Group the 16 pipeline statuses into the natural stages for a tidy filter bar.
+_S = Booking.Status
+BOOKING_GROUPS = [
+    ("leads", "Leads", [_S.NEW, _S.QUOTE_SENT, _S.QUOTE_ACCEPTED]),
+    ("booked", "Booked", [_S.CONTRACT_SENT, _S.CONTRACT_SIGNED, _S.DEPOSIT_PAID,
+                          _S.CONFIRMED, _S.PLANNING]),
+    ("production", "In production", [_S.SHOOT_COMPLETED, _S.EDITING]),
+    ("delivered", "Delivered", [_S.DELIVERED, _S.FINAL_PAID]),
+    ("completed", "Completed", [_S.COMPLETED, _S.ARCHIVED]),
+    ("cancelled", "Cancelled", [_S.CANCELLED, _S.REFUNDED]),
+]
+_GROUP_MAP = {key: statuses for key, _label, statuses in BOOKING_GROUPS}
+
+
 @login_required
 def bookings_list(request):
     ws = _require_workspace(request)
     if not ws:
         return redirect("dashboard:onboarding")
-    qs = Booking.objects.filter(workspace=ws).select_related("client").order_by("-created_at")
-    status = request.GET.get("status")
-    if status:
-        qs = qs.filter(status=status)
+    base = Booking.objects.filter(workspace=ws).select_related("client")
+
+    group = request.GET.get("group")
+    groups = [
+        {"key": key, "label": label, "count": base.filter(status__in=statuses).count()}
+        for key, label, statuses in BOOKING_GROUPS
+    ]
+    qs = base.order_by("-created_at")
+    if group in _GROUP_MAP:
+        qs = qs.filter(status__in=_GROUP_MAP[group])
+
     return render(request, "dashboard/bookings_list.html", {
         "active": "bookings", "ws": ws, "bookings": qs,
-        "statuses": Booking.Status.choices, "current_status": status,
+        "groups": groups, "current_group": group, "total_count": base.count(),
     })
 
 
@@ -203,6 +229,79 @@ def calendar(request):
 
 
 @login_required
+def deliveries(request):
+    """Post-shoot production & delivery tracker — what's due, what's overdue,
+    and reminders for every job after the shoot (build research)."""
+    ws = _require_workspace(request)
+    if not ws:
+        return redirect("dashboard:onboarding")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        d = get_object_or_404(Deliverable, pk=request.POST.get("deliverable"), workspace=ws)
+        if action == "done":
+            d.mark_done()
+            messages.success(request, f"Marked “{d.title}” as done.")
+        elif action == "reopen":
+            d.reopen()
+        elif action == "snooze":
+            if d.due_date:
+                d.due_date += timezone.timedelta(days=7)
+                d.reminded_at = None
+                d.save(update_fields=["due_date", "reminded_at", "updated_at"])
+                messages.success(request, f"Pushed “{d.title}” back a week.")
+        elif action == "set_due":
+            new_due = request.POST.get("due_date")
+            if new_due:
+                d.due_date = new_due
+                d.reminded_at = None
+                d.save(update_fields=["due_date", "reminded_at", "updated_at"])
+        return redirect("dashboard:deliveries")
+
+    # Make sure existing bookings have a delivery plan, then raise reminders.
+    prod.backfill_for_workspace(ws)
+    prod.generate_reminders(ws)
+
+    items = list(Deliverable.objects.filter(workspace=ws).select_related("booking", "booking__client"))
+    active = [d for d in items if not d.is_done]
+    overdue = sorted([d for d in active if d.is_overdue], key=lambda d: d.due_date or timezone.now().date())
+    due_soon = sorted([d for d in active if not d.is_overdue and d.is_due_soon],
+                      key=lambda d: d.due_date or timezone.now().date())
+    upcoming = sorted([d for d in active if not d.is_overdue and not d.is_due_soon],
+                      key=lambda d: d.due_date or timezone.now().date())
+    done = [d for d in items if d.is_done]
+
+    # Per-booking timelines, sorted by nearest open due date.
+    by_booking = {}
+    for d in items:
+        by_booking.setdefault(d.booking_id, {"booking": d.booking, "items": []})["items"].append(d)
+    for grp in by_booking.values():
+        grp["items"].sort(key=lambda x: (x.sort_order, x.due_date or timezone.now().date()))
+        open_items = [x for x in grp["items"] if not x.is_done]
+        grp["next_due"] = min((x.due_date for x in open_items if x.due_date), default=None)
+        grp["open_count"] = len(open_items)
+        grp["overdue_count"] = len([x for x in open_items if x.is_overdue])
+    groups = sorted(by_booking.values(),
+                    key=lambda g: (g["next_due"] is None, g["next_due"] or timezone.now().date()))
+
+    flt = request.GET.get("filter", "attention")
+    return render(request, "dashboard/deliveries.html", {
+        "active": "deliveries", "ws": ws,
+        "overdue": overdue, "due_soon": due_soon, "upcoming": upcoming, "done": done,
+        "attention": overdue + due_soon, "groups": groups, "filter": flt,
+        "counts": {"overdue": len(overdue), "due_soon": len(due_soon),
+                   "upcoming": len(upcoming), "done": len(done)},
+    })
+
+
+@login_required
+def notifications_read(request):
+    """Mark all of the current user's notifications read."""
+    request.user.notifications.filter(is_read=False).update(is_read=True)
+    return redirect(request.POST.get("next") or request.META.get("HTTP_REFERER") or "dashboard:overview")
+
+
+@login_required
 def clients(request):
     ws = _require_workspace(request)
     if not ws:
@@ -230,5 +329,57 @@ def profile(request):
 
 @login_required
 def onboarding(request):
-    """Shown when a logged-in user has no workspace yet (build plan Phase 1)."""
-    return render(request, "dashboard/onboarding.html", {"active": "overview"})
+    """Create-your-workspace wizard, shown when a user has no workspace yet
+    (build plan Phase 1). Spins up a workspace + profile + first package so
+    every dashboard tab becomes usable immediately."""
+    if get_active_workspace(request.user):
+        return redirect("dashboard:overview")
+
+    if request.method == "POST":
+        business = request.POST.get("business_name", "").strip()
+        if not business:
+            messages.error(request, "Please enter a business name.")
+        else:
+            category = request.POST.get("category", "weddings")
+            ws = Workspace.objects.create(
+                owner=request.user, type=Workspace.Type.SOLO, business_name=business,
+                abn=request.POST.get("abn", "").strip(), is_published=True,
+            )
+            ws.mark_verified()  # demo: auto-verify so the public page works right away
+            Member.objects.create(workspace=ws, user=request.user, role=Member.Role.OWNER)
+            Subscription.objects.create(
+                workspace=ws, plan=Subscription.Plan.PRO,
+                period_end=timezone.now().date() + timezone.timedelta(days=300),
+            )
+            if request.user.role_type == "client":
+                request.user.role_type = "creative"
+                request.user.save(update_fields=["role_type"])
+
+            CreativeProfile.objects.create(
+                workspace=ws,
+                headline=request.POST.get("headline", "").strip(),
+                bio=request.POST.get("bio", "").strip(),
+                suburb=request.POST.get("suburb", "").strip(),
+                primary_category=category,
+                styles=request.POST.get("styles", "").strip(),
+                starting_price=Decimal(request.POST.get("starting_price") or "0"),
+                accent=request.POST.get("accent", "navy"),
+            )
+            svc = Service.objects.create(
+                workspace=ws, category=category,
+                title=f"{business} — {dict(CATEGORY_CHOICES).get(category, 'Services')}",
+            )
+            pkg_name = request.POST.get("package_name", "").strip()
+            pkg_price = request.POST.get("package_price", "").strip()
+            if pkg_name and pkg_price:
+                try:
+                    Package.objects.create(service=svc, name=pkg_name,
+                                           base_price=Decimal(pkg_price))
+                except (ValueError, ArithmeticError):
+                    pass
+            messages.success(request, f"{business} is live! Your dashboard is ready.")
+            return redirect("dashboard:overview")
+
+    return render(request, "dashboard/onboarding.html", {
+        "active": "overview", "categories": CATEGORY_CHOICES,
+    })
