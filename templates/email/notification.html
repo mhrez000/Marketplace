@@ -1,0 +1,12 @@
+{% extends "email/base_email.html" %}
+{% block content %}
+  <p style="margin:0 0 16px;font-size:15px;color:#3c4f6a;">Hi{% if first_name %} {{ first_name }}{% endif %},</p>
+  <h1 style="margin:0 0 12px;font-size:20px;font-weight:700;color:#2F4156;line-height:1.3;">{{ heading }}</h1>
+  {% if body %}<p style="margin:0 0 22px;font-size:15px;line-height:1.55;color:#3c4f6a;">{{ body }}</p>{% endif %}
+  {% if cta_url %}
+  <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-radius:999px;background:#567C8D;">
+    <a href="{{ cta_url }}" style="display:inline-block;padding:13px 26px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:999px;">{{ cta_label }} →</a>
+  </td></tr></table>
+  <p style="margin:18px 0 0;font-size:12px;color:#9aabc0;">Or paste this link: {{ cta_url }}</p>
+  {% endif %}
+{% endblock %}

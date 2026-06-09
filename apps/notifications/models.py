@@ -16,9 +16,8 @@ class Notification(TimeStampedModel):
 
 
 def notify(user, verb, url="", icon="bell", email=False):
-    """In-app notification helper. Set email=True for money/time-critical events
-    to also send a transactional email (build plan §16 channel matrix). Email
-    uses the console backend in dev; Celery/async delivery lands later."""
+    """Low-level in-app notification (+ optional branded email). For richer,
+    matrix-driven events prefer `dispatch()`."""
     n = Notification.objects.create(user=user, verb=verb, url=url, icon=icon)
     if email and getattr(user, "email", "") and getattr(user, "pk", None):
         from .tasks import send_notification_email
@@ -26,15 +25,61 @@ def notify(user, verb, url="", icon="bell", email=False):
     return n
 
 
-def _send_email(user, verb, url):
+def _email_allowed(user, category):
+    """Transactional always sends; reminders/marketing respect a user's
+    NotificationPreference if one exists (forward-compatible — defaults to on)."""
+    from .events import MARKETING, REMINDER
+    if category not in (REMINDER, MARKETING):
+        return True
+    pref = getattr(user, "notification_preference", None)
+    if pref is None:
+        return True
+    if category == REMINDER:
+        return getattr(pref, "email_reminders", True)
+    return getattr(pref, "email_marketing", False)
+
+
+def dispatch(event_key, recipient, *, verb, url=""):
+    """Send a notification through the channel matrix (apps.notifications.events).
+    Creates the in-app record and queues a branded email per the event's channels
+    + the recipient's preferences."""
+    from .events import event
+    from .tasks import send_notification_email
+
+    ev = event(event_key)
+    n = Notification.objects.create(user=recipient, verb=verb, url=url, icon=ev["icon"])
+    if ("email" in ev["channels"] and getattr(recipient, "email", "")
+            and getattr(recipient, "pk", None) and _email_allowed(recipient, ev["category"])):
+        send_notification_email.delay(recipient.pk, verb, url,
+                                      subject=ev["subject"], cta_label=ev["cta"])
+    # "sms" channel is reserved here and wired in a later phase.
+    return n
+
+
+def _send_email(user, verb, url="", subject=None, cta_label="View details"):
+    """Send a branded HTML (multipart) transactional email."""
     from django.conf import settings
-    from django.core.mail import send_mail
+    from django.core.mail import EmailMultiAlternatives
+    from django.template.loader import render_to_string
 
     brand = getattr(settings, "BRAND_NAME", "Lens")
-    link = f"{getattr(settings, 'SITE_URL', '')}{url}" if url else ""
-    body = f"Hi{(' ' + user.first_name) if getattr(user, 'first_name', '') else ''},\n\n{verb}"
-    if link:
-        body += f"\n\n{link}"
-    body += f"\n\n— {brand}"
-    send_mail(subject=f"[{brand}] {verb[:80]}", message=body,
-              from_email=None, recipient_list=[user.email], fail_silently=True)
+    site = getattr(settings, "SITE_URL", "")
+    cta_url = f"{site}{url}" if url else ""
+    heading = subject or verb
+    body = verb if subject else ""
+
+    ctx = {"brand": brand, "site_url": site, "first_name": getattr(user, "first_name", ""),
+           "heading": heading, "body": body, "cta_url": cta_url, "cta_label": cta_label}
+    html = render_to_string("email/notification.html", ctx)
+    text_lines = [f"Hi{(' ' + user.first_name) if getattr(user, 'first_name', '') else ''},", "", heading]
+    if body:
+        text_lines += ["", body]
+    if cta_url:
+        text_lines += ["", f"{cta_label}: {cta_url}"]
+    text_lines += ["", f"— {brand}"]
+
+    msg = EmailMultiAlternatives(
+        subject=f"{brand}: {(subject or verb)[:90]}",
+        body="\n".join(text_lines), from_email=None, to=[user.email])
+    msg.attach_alternative(html, "text/html")
+    msg.send(fail_silently=True)

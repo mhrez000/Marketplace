@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from apps.notifications.models import notify
+from apps.notifications.models import dispatch, notify
 
 from .models import Enquiry, Quote
 
@@ -41,9 +41,9 @@ def nudge_stale_enquiries(hours=24):
             continue
         days = int(e.age_hours // 24)
         ago = f"{days}d" if days else f"{int(e.age_hours)}h"
-        notify(e.workspace.owner,
-               f"Still waiting: {e.client.email}'s enquiry from {ago} ago — reply to keep your ranking",
-               url="/app/leads/", icon="alert", email=True)
+        dispatch("lead_waiting", e.workspace.owner,
+                 verb=f"Still waiting: {e.client.email}'s enquiry from {ago} ago — reply to keep your ranking.",
+                 url="/app/leads/")
         e.nudged_at = now
         e.save(update_fields=["nudged_at", "updated_at"])
         count += 1

@@ -144,7 +144,7 @@ def payment_reminders():
 
     from django.utils import timezone
 
-    from apps.notifications.models import notify
+    from apps.notifications.models import dispatch, notify
 
     from .models import Invoice
     now = timezone.now()
@@ -162,13 +162,15 @@ def payment_reminders():
         label = inv.get_invoice_type_display()
         booking = inv.booking
         if inv.due_date < today:
-            notify(booking.client, f"Payment overdue — {label} ${inv.amount:.0f} for {booking.title}",
-                   url=f"/portal/booking/{booking.id}/", icon="alert", email=True)
+            dispatch("payment_overdue", booking.client,
+                     verb=f"Your {label.lower()} of ${inv.amount:.0f} for {booking.title} is overdue.",
+                     url=f"/portal/booking/{booking.id}/")
             notify(booking.workspace.owner, f"{booking.client.email}'s {label.lower()} (${inv.amount:.0f}) is overdue",
                    url="/app/bookings/", icon="alert")
         else:
-            notify(booking.client, f"Reminder — {label} ${inv.amount:.0f} due {inv.due_date:%d %b}",
-                   url=f"/portal/booking/{booking.id}/", icon="clock", email=True)
+            dispatch("payment_reminder", booking.client,
+                     verb=f"Your {label.lower()} of ${inv.amount:.0f} is due {inv.due_date:%d %b}.",
+                     url=f"/portal/booking/{booking.id}/")
         inv.reminded_at = now
         inv.save(update_fields=["reminded_at", "updated_at"])
         count += 1

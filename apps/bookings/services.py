@@ -15,7 +15,7 @@ from apps.crm.models import Client
 from apps.enquiries.models import Enquiry, Quote
 from apps.galleries.models import Gallery
 from apps.messaging.models import Message, Thread
-from apps.notifications.models import notify
+from apps.notifications.models import dispatch, notify
 from apps.payments.models import Invoice, Payment
 from apps.payments.services import charge_invoice
 from apps.profiles import services as availability
@@ -52,7 +52,8 @@ def create_enquiry(*, client, workspace, event_type, message, event_date=None,
     )
     if message:
         Message.objects.create(thread=thread, sender=client, body=message)
-    notify(workspace.owner, f"New enquiry from {client.email}", url="/app/leads/", icon="inbox", email=True)
+    dispatch("new_enquiry", workspace.owner,
+             verb=f"New enquiry from {client.email}", url="/app/leads/")
     return enquiry
 
 
@@ -68,8 +69,8 @@ def send_quote(*, enquiry, title, line_items, package=None, deposit_pct=Decimal(
     enquiry.mark_responded()  # sending a quote counts as the first response
     enquiry.status = Enquiry.Status.QUOTED
     enquiry.save(update_fields=["status", "updated_at"])
-    notify(enquiry.client, f"You received a quote from {enquiry.workspace.business_name}", email=True,
-           url="/portal/", icon="doc")
+    dispatch("quote_received", enquiry.client,
+             verb=f"You received a quote from {enquiry.workspace.business_name}", url="/portal/")
     return quote
 
 
@@ -90,8 +91,11 @@ def accept_quote(quote):
     )
     _generate_contract(booking)
     booking.transition(Booking.Status.CONTRACT_SENT)
-    notify(enquiry.workspace.owner, f"{enquiry.client.email} accepted your quote", url="/app/bookings/", icon="card")
-    notify(enquiry.client, "Please review & sign your contract", url=f"/portal/booking/{booking.id}/", icon="doc", email=True)
+    dispatch("quote_accepted", enquiry.workspace.owner,
+             verb=f"{enquiry.client.email} accepted your quote", url="/app/bookings/")
+    dispatch("contract_to_sign", enquiry.client,
+             verb="Please review and sign your contract to lock in your booking.",
+             url=f"/portal/booking/{booking.id}/")
     return booking
 
 
@@ -197,7 +201,9 @@ def settle_invoice(invoice):
         from apps.production.services import mark_all_done
         mark_all_done(booking)
         notify(booking.workspace.owner, f"Final payment received — {booking.title}", url="/app/bookings/", icon="card")
-        notify(booking.client, "Thanks! Your booking is complete. Leave a review?", url=f"/portal/booking/{booking.id}/", icon="bell")
+        dispatch("review_request", booking.client,
+                 verb=f"Thanks — your booking with {booking.workspace.business_name} is complete. A quick review helps other clients.",
+                 url=f"/portal/booking/{booking.id}/")
 
 
 def _on_confirmed(booking):
@@ -213,7 +219,9 @@ def _on_confirmed(booking):
     # Generate the post-shoot delivery plan (back-up → edit → deliver…).
     from apps.production.services import generate_deliverables
     generate_deliverables(booking)
-    notify(booking.client, "Booking confirmed — deposit received 🎉", url=f"/portal/booking/{booking.id}/", icon="card", email=True)
+    dispatch("booking_confirmed", booking.client,
+             verb=f"Your deposit was received and '{booking.title}' is confirmed. We can't wait!",
+             url=f"/portal/booking/{booking.id}/")
     notify(booking.workspace.owner, f"Deposit paid — {booking.title} confirmed", url="/app/bookings/", icon="card")
 
 
@@ -240,7 +248,9 @@ def deliver_gallery(gallery):
         booking.transition(Booking.Status.DELIVERED, force=True)
     from apps.production.services import mark_done
     mark_done(booking, "final_delivery")  # tick the delivery milestone
-    notify(booking.client, f"Your gallery '{gallery.title}' is ready ✨", url=f"/portal/gallery/{gallery.id}/", icon="image", email=True)
+    dispatch("gallery_delivered", booking.client,
+             verb=f"{booking.workspace.business_name} has delivered '{gallery.title}'. Enjoy!",
+             url=f"/portal/gallery/{gallery.id}/")
     return gallery
 
 
@@ -269,8 +279,9 @@ def cancel_booking(booking, *, by="creative", reason=""):
     note = f" Reason: {reason}" if reason else ""
     refund_note = f" A refund of ${refund:,.2f} will be processed." if refund > 0 else " No refund applies (deposit non-refundable)."
     if by == "creative":
-        notify(booking.client, f"Your booking '{booking.title}' was cancelled by the creative.{refund_note}{note}",
-               email=True, url=f"/portal/booking/{booking.id}/", icon="alert")
+        dispatch("booking_cancelled_client", booking.client,
+                 verb=f"Your booking '{booking.title}' was cancelled by the creative.{refund_note}{note}",
+                 url=f"/portal/booking/{booking.id}/")
     else:
         notify(booking.workspace.owner, f"{booking.client.email} cancelled '{booking.title}'.{note}",
                url="/app/bookings/", icon="alert")
@@ -287,9 +298,9 @@ def raise_dispute(booking, *, user, role, reason, detail=""):
     dispute = Dispute.objects.create(
         booking=booking, raised_by=user, raised_by_role=role, reason=reason, detail=detail)
     other = booking.client if role == "creative" else booking.workspace.owner
-    notify(other, f"A dispute was raised on '{booking.title}' — our team will review it.",
-           email=True, url=(f"/app/bookings/{booking.id}/" if role == "client" else f"/portal/booking/{booking.id}/"),
-           icon="alert")
+    dispatch("dispute_raised", other,
+             verb=f"A dispute was raised on '{booking.title}' — our team will review it.",
+             url=(f"/app/bookings/{booking.id}/" if role == "client" else f"/portal/booking/{booking.id}/"))
     # Flag any platform admins so it enters the review queue.
     from django.contrib.auth import get_user_model
     for admin in get_user_model().objects.filter(is_staff=True)[:5]:
