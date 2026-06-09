@@ -52,7 +52,7 @@ def create_enquiry(*, client, workspace, event_type, message, event_date=None,
     )
     if message:
         Message.objects.create(thread=thread, sender=client, body=message)
-    notify(workspace.owner, f"New enquiry from {client.email}", url="/app/leads/", icon="inbox")
+    notify(workspace.owner, f"New enquiry from {client.email}", url="/app/leads/", icon="inbox", email=True)
     return enquiry
 
 
@@ -67,7 +67,7 @@ def send_quote(*, enquiry, title, line_items, package=None, deposit_pct=Decimal(
     quote.save()
     enquiry.status = Enquiry.Status.QUOTED
     enquiry.save(update_fields=["status", "updated_at"])
-    notify(enquiry.client, f"You received a quote from {enquiry.workspace.business_name}",
+    notify(enquiry.client, f"You received a quote from {enquiry.workspace.business_name}", email=True,
            url="/portal/", icon="doc")
     return quote
 
@@ -90,7 +90,7 @@ def accept_quote(quote):
     _generate_contract(booking)
     booking.transition(Booking.Status.CONTRACT_SENT)
     notify(enquiry.workspace.owner, f"{enquiry.client.email} accepted your quote", url="/app/bookings/", icon="card")
-    notify(enquiry.client, "Please review & sign your contract", url=f"/portal/booking/{booking.id}/", icon="doc")
+    notify(enquiry.client, "Please review & sign your contract", url=f"/portal/booking/{booking.id}/", icon="doc", email=True)
     return booking
 
 
@@ -190,7 +190,7 @@ def _on_confirmed(booking):
     # Generate the post-shoot delivery plan (back-up → edit → deliver…).
     from apps.production.services import generate_deliverables
     generate_deliverables(booking)
-    notify(booking.client, "Booking confirmed — deposit received 🎉", url=f"/portal/booking/{booking.id}/", icon="card")
+    notify(booking.client, "Booking confirmed — deposit received 🎉", url=f"/portal/booking/{booking.id}/", icon="card", email=True)
     notify(booking.workspace.owner, f"Deposit paid — {booking.title} confirmed", url="/app/bookings/", icon="card")
 
 
@@ -221,7 +221,7 @@ def deliver_gallery(gallery):
         booking.transition(Booking.Status.DELIVERED, force=True)
     from apps.production.services import mark_done
     mark_done(booking, "final_delivery")  # tick the delivery milestone
-    notify(booking.client, f"Your gallery '{gallery.title}' is ready ✨", url=f"/portal/gallery/{gallery.id}/", icon="image")
+    notify(booking.client, f"Your gallery '{gallery.title}' is ready ✨", url=f"/portal/gallery/{gallery.id}/", icon="image", email=True)
     return gallery
 
 
@@ -240,7 +240,7 @@ def cancel_booking(booking, *, by="creative", reason=""):
 
     note = f" Reason: {reason}" if reason else ""
     if by == "creative":
-        notify(booking.client, f"Your booking '{booking.title}' was cancelled by the creative.{note}",
+        notify(booking.client, f"Your booking '{booking.title}' was cancelled by the creative.{note}", email=True,
                url=f"/portal/booking/{booking.id}/", icon="alert")
     else:
         notify(booking.workspace.owner, f"{booking.client.email} cancelled '{booking.title}'.{note}",

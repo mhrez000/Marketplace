@@ -17,7 +17,7 @@ from apps.bookings import services as flow
 from apps.bookings.models import Booking
 from apps.contracts.models import ContractTemplate
 from apps.galleries.models import Asset, Gallery
-from apps.payments.models import Subscription
+from apps.payments.models import Invoice, Subscription
 from apps.profiles.models import (Availability, CreativeProfile, Package, Service,
                                   VerificationDocument)
 from apps.workspaces.models import Member, Workspace
@@ -124,6 +124,18 @@ class Command(BaseCommand):
         self._production_booking(olivia, admin_ws, event_date=today - timedelta(days=6))
         self._production_booking(sam, harper, event_date=today - timedelta(days=3))
 
+        # Quote lifecycle demos: one expiring tomorrow, one already expired,
+        # and a signed booking whose deposit is now overdue.
+        self._expiring_quote(northcote, admin_ws, event_date=today + timedelta(days=35), days_left=1)
+        self._expiring_quote(olivia, harper, event_date=today + timedelta(days=70), days_left=-2)
+        self._overdue_deposit_booking(sam, admin_ws, event_date=today + timedelta(days=55))
+
+        # Reflect lifecycle statuses now (expire stale quotes, flag overdue invoices).
+        from apps.enquiries.services import expire_quotes
+        from apps.payments.services import mark_overdue_invoices
+        expire_quotes()
+        mark_overdue_invoices()
+
         # 1) Completed lifecycle: Olivia ↔ Harper (shows revenue, gallery, review)
         self._completed_booking(olivia, harper, event_date=today - timedelta(days=20))
 
@@ -227,6 +239,34 @@ class Command(BaseCommand):
         flow.sign_contract_client(b.contract, name=client.get_full_name())
         flow.sign_contract_creative(b.contract, name=ws.business_name)
         flow.pay_deposit(b)
+        return b
+
+    def _expiring_quote(self, client, ws, *, event_date, days_left):
+        """A sent quote with a custom expiry — for the 'expires soon' / 'expired' demo."""
+        e = flow.create_enquiry(client=client, workspace=ws, event_type=ws.profile.primary_category,
+                                message="Quick one — is this date free?", event_date=event_date,
+                                location=f"{ws.profile.suburb} VIC")
+        pkg, items = self._quote_for(ws)
+        q = flow.send_quote(enquiry=e, title=f"{pkg.name if pkg else 'Custom'} package",
+                            line_items=items, package=pkg)
+        q.expires_at = timezone.now().date() + timedelta(days=days_left)
+        q.save(update_fields=["expires_at"])
+        return q
+
+    def _overdue_deposit_booking(self, client, ws, *, event_date):
+        """Contract signed but the deposit is now overdue (unpaid past due date)."""
+        e = flow.create_enquiry(client=client, workspace=ws, event_type=ws.profile.primary_category,
+                                message="Keen to lock this in!", event_date=event_date,
+                                location=f"{ws.profile.suburb} VIC")
+        pkg, items = self._quote_for(ws)
+        q = flow.send_quote(enquiry=e, title=f"{pkg.name if pkg else 'Custom'} package",
+                            line_items=items, package=pkg)
+        b = flow.accept_quote(q)
+        flow.sign_contract_client(b.contract, name=client.get_full_name())
+        inv = b.invoices.filter(invoice_type=Invoice.Type.DEPOSIT).first()
+        if inv:
+            inv.due_date = timezone.now().date() - timedelta(days=4)
+            inv.save(update_fields=["due_date"])
         return b
 
     def _production_booking(self, client, ws, *, event_date):

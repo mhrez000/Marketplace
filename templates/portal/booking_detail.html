@@ -102,7 +102,8 @@
             <span class="text-navy-600">{{ inv.get_invoice_type_display }} <span class="text-navy-400">${{ inv.amount|floatformat:0 }}</span></span>
             {% if inv.is_paid %}<span class="pill-verified">Paid</span>
             {% elif inv.invoice_type == 'final' %}
-              <form method="post"><input type="hidden" name="action" value="pay_final">{% csrf_token %}<button class="btn-accent !py-1 !px-3 text-xs">Pay now</button></form>
+              <span class="flex items-center gap-1.5">{% if inv.is_overdue %}<span class="pill bg-red-100 text-red-600">Overdue</span>{% endif %}<form method="post"><input type="hidden" name="action" value="pay_final">{% csrf_token %}<button class="btn-accent !py-1 !px-3 text-xs">Pay now</button></form></span>
+            {% elif inv.is_overdue %}<span class="pill bg-red-100 text-red-600">Overdue</span>
             {% else %}<span class="pill-beige">Due</span>{% endif %}
           </div>
           {% empty %}<p class="text-sm text-navy-400">No invoices yet.</p>{% endfor %}

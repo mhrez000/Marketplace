@@ -23,6 +23,10 @@
         <div>
           <p class="text-sm font-semibold text-navy-700">{{ q.title }}</p>
           <p class="text-xs text-navy-400">Total ${{ q.total|floatformat:2 }} (incl. GST) · deposit ${{ q.deposit_amount|floatformat:2 }}</p>
+          {% if q.status == 'sent' and q.expires_at %}
+            {% if q.days_to_expiry <= 2 %}<p class="mt-1 text-xs font-semibold text-amber-600">⏱ Expires {{ q.expires_at|date:"d M" }} — {{ q.days_to_expiry }} day{{ q.days_to_expiry|pluralize }} left</p>
+            {% else %}<p class="mt-1 text-xs text-navy-400">Valid until {{ q.expires_at|date:"d M Y" }}</p>{% endif %}
+          {% elif q.status == 'expired' %}<p class="mt-1 text-xs font-semibold text-navy-400">Expired {{ q.expires_at|date:"d M" }}</p>{% endif %}
         </div>
         {% if q.status == 'sent' or q.status == 'draft' %}
           <div class="flex gap-2">

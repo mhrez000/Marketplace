@@ -33,6 +33,11 @@ def overview(request):
     if not ws:
         return redirect("dashboard:onboarding")
 
+    from apps.enquiries.services import expire_quotes
+    from apps.payments.services import mark_overdue_invoices
+    expire_quotes()
+    mark_overdue_invoices()
+
     bookings = Booking.objects.filter(workspace=ws)
     enquiries = Enquiry.objects.filter(workspace=ws)
     revenue = Payment.objects.filter(

@@ -120,7 +120,7 @@
         {% for inv in invoices %}
         <div class="mt-2 flex items-center justify-between text-sm">
           <span class="text-navy-600">{{ inv.get_invoice_type_display }} <span class="text-navy-400">${{ inv.amount|floatformat:0 }}</span></span>
-          {% if inv.is_paid %}<span class="pill-verified">Paid</span>{% else %}<span class="pill-beige">{{ inv.get_status_display }}</span>{% endif %}
+          {% if inv.is_paid %}<span class="pill-verified">Paid</span>{% elif inv.is_overdue %}<span class="pill bg-red-100 text-red-600">Overdue</span>{% else %}<span class="pill-beige">{{ inv.get_status_display }}</span>{% endif %}
         </div>
         {% empty %}<p class="mt-2 text-sm text-navy-400">No invoices yet.</p>{% endfor %}
       </div>

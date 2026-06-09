@@ -60,6 +60,23 @@ class Quote(TimeStampedModel):
     def __str__(self):
         return f"{self.title} — ${self.total}"
 
+    @property
+    def is_open(self):
+        return self.status in {self.Status.SENT, self.Status.DRAFT}
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+        return (self.is_open and self.expires_at is not None
+                and self.expires_at < timezone.now().date())
+
+    @property
+    def days_to_expiry(self):
+        if not self.expires_at:
+            return None
+        from django.utils import timezone
+        return (self.expires_at - timezone.now().date()).days
+
     def recalc(self, deposit_pct=Decimal("0.25")):
         """Compute subtotal/GST/total from line items, server-side only."""
         subtotal = sum(Decimal(str(li.get("amount", 0))) for li in self.line_items)

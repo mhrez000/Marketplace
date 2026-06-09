@@ -178,3 +178,6 @@ REST_FRAMEWORK = {
 # Brand — "Lens" is the working name; rename in one place.
 BRAND_NAME = env("BRAND_NAME", default="Lens")
 BRAND_TAGLINE = "Find & book Melbourne's best photographers and videographers."
+
+# Absolute base URL for links inside transactional emails.
+SITE_URL = env("SITE_URL", default="http://localhost:8000")

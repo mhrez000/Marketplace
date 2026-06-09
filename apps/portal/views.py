@@ -13,6 +13,12 @@ from apps.messaging.models import Message
 
 @login_required
 def home(request):
+    # Cheap housekeeping so statuses are fresh in the demo without a cron job.
+    from apps.enquiries.services import expire_quotes
+    from apps.payments.services import mark_overdue_invoices
+    expire_quotes()
+    mark_overdue_invoices()
+
     enquiries = (Enquiry.objects.filter(client=request.user)
                  .select_related("workspace").prefetch_related("quotes").order_by("-created_at"))
     bookings = (Booking.objects.filter(client=request.user)
@@ -46,9 +52,12 @@ def booking_detail(request, pk):
 def _handle_client_action(request, booking, contract):
     action = request.POST.get("action")
     if action == "accept_quote" and booking.quote:
-        booking.quote.status = Quote.Status.ACCEPTED
-        booking.quote.save(update_fields=["status", "updated_at"])
-        messages.success(request, "Quote accepted! Please review and sign your contract.")
+        if booking.quote.is_expired:
+            messages.error(request, "This quote has expired — ask the creative for an updated one.")
+        else:
+            booking.quote.status = Quote.Status.ACCEPTED
+            booking.quote.save(update_fields=["status", "updated_at"])
+            messages.success(request, "Quote accepted! Please review and sign your contract.")
     elif action == "sign_contract" and contract and not contract.signed_by_client_at:
         name = request.POST.get("signature_name", "").strip()
         if not name:
@@ -86,6 +95,9 @@ def _handle_client_action(request, booking, contract):
 def quote_accept(request, pk):
     """Accept a quote straight from the portal home — creates the booking."""
     quote = get_object_or_404(Quote, pk=pk, enquiry__client=request.user)
+    if quote.is_expired:
+        messages.error(request, "This quote has expired — ask the creative for an updated one.")
+        return redirect("portal:home")
     if quote.status in {Quote.Status.SENT, Quote.Status.DRAFT}:
         booking = flow.accept_quote(quote)
         messages.success(request, "Quote accepted! Review and sign your contract.")
