@@ -16,6 +16,7 @@ from apps.messaging.models import Message
 from apps.payments.models import Invoice, Payment, Subscription
 from apps.production import services as prod
 from apps.production.models import Deliverable
+from apps.profiles import services as availability
 from apps.profiles.models import (CATEGORY_CHOICES, CreativeProfile, Package,
                                   Service)
 from apps.workspaces.models import Member, Workspace
@@ -199,6 +200,9 @@ def _handle_creative_action(request, booking, contract, action):
             defaults={"amount": balance, "due_date": timezone.now().date(), "status": Invoice.Status.SENT},
         )
         messages.success(request, "Final invoice sent to the client.")
+    elif action == "cancel":
+        flow.cancel_booking(booking, by="creative", reason=request.POST.get("reason", "").strip())
+        messages.success(request, "Booking cancelled and the date freed up.")
     elif action == "send_message":
         body = request.POST.get("body", "").strip()
         thread = booking.threads.first() or (booking.enquiry.threads.first() if booking.enquiry else None)
@@ -224,8 +228,27 @@ def calendar(request):
     ws = _require_workspace(request)
     if not ws:
         return redirect("dashboard:onboarding")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        on_date = request.POST.get("date")
+        if action == "block" and on_date:
+            if availability.block(ws, on_date):
+                messages.success(request, f"Blocked {on_date}.")
+            else:
+                messages.error(request, "That date is already booked — can't block it.")
+        elif action == "unblock" and on_date:
+            availability.unblock(ws, on_date)
+            messages.success(request, f"Unblocked {on_date}.")
+        return redirect("dashboard:calendar")
+
     events = CalendarEvent.objects.filter(workspace=ws).select_related("booking").order_by("start")
-    return render(request, "dashboard/calendar.html", {"active": "calendar", "ws": ws, "events": events})
+    return render(request, "dashboard/calendar.html", {
+        "active": "calendar", "ws": ws, "events": events,
+        "blocked": availability.blocked_dates(ws),
+        "booked": availability.unavailable_dates(ws, limit=30),
+        "today": timezone.now().date(),
+    })
 
 
 @login_required

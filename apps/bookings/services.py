@@ -16,12 +16,21 @@ from apps.enquiries.models import Enquiry, Quote
 from apps.galleries.models import Gallery
 from apps.messaging.models import Message, Thread
 from apps.notifications.models import notify
-from apps.payments.models import Invoice
+from apps.payments.models import Invoice, Payment
 from apps.payments.services import charge_invoice
+from apps.profiles import services as availability
 from apps.profiles.models import Availability
 from apps.reviews.models import Review
 
 from .models import Booking, CalendarEvent
+
+
+class DateUnavailable(Exception):
+    """Raised when trying to confirm a booking on a date that's already taken."""
+
+    def __init__(self, event_date):
+        self.event_date = event_date
+        super().__init__(f"{event_date} is no longer available.")
 
 
 # ── Enquiry ────────────────────────────────────────────────────────────────
@@ -155,6 +164,9 @@ def _ensure_deposit_invoice(booking):
 
 
 def pay_deposit(booking):
+    # Don't take money for a date we can't honour (double-booking guard).
+    if not availability.is_available(booking.workspace, booking.event_date, exclude_booking=booking):
+        raise DateUnavailable(booking.event_date)
     invoice = _ensure_deposit_invoice(booking)
     if invoice.is_paid:
         return invoice.payments.first()
@@ -167,10 +179,7 @@ def pay_deposit(booking):
 
 def _on_confirmed(booking):
     if booking.event_date:
-        Availability.objects.update_or_create(
-            workspace=booking.workspace, date=booking.event_date,
-            defaults={"status": Availability.Status.BOOKED},
-        )
+        availability.mark_booked(booking.workspace, booking.event_date)
         CalendarEvent.objects.get_or_create(
             workspace=booking.workspace, booking=booking,
             event_type=CalendarEvent.Type.SHOOT,
@@ -214,6 +223,29 @@ def deliver_gallery(gallery):
     mark_done(booking, "final_delivery")  # tick the delivery milestone
     notify(booking.client, f"Your gallery '{gallery.title}' is ready ✨", url=f"/portal/gallery/{gallery.id}/", icon="image")
     return gallery
+
+
+# ── Cancellation ───────────────────────────────────────────────────────────
+def cancel_booking(booking, *, by="creative", reason=""):
+    """Cancel a booking and free its date back up. Marks REFUNDED if a deposit
+    was taken (test gateway), else CANCELLED. Removes the shoot from the calendar
+    and notifies the other party."""
+    had_payment = Payment.objects.filter(
+        invoice__booking=booking, status=Payment.Status.SUCCEEDED).exists()
+    new_status = Booking.Status.REFUNDED if had_payment else Booking.Status.CANCELLED
+    booking.transition(new_status, force=True)
+
+    availability.free_date(booking.workspace, booking.event_date, exclude_booking=booking)
+    booking.events.filter(event_type=CalendarEvent.Type.SHOOT).delete()
+
+    note = f" Reason: {reason}" if reason else ""
+    if by == "creative":
+        notify(booking.client, f"Your booking '{booking.title}' was cancelled by the creative.{note}",
+               url=f"/portal/booking/{booking.id}/", icon="alert")
+    else:
+        notify(booking.workspace.owner, f"{booking.client.email} cancelled '{booking.title}'.{note}",
+               url="/app/bookings/", icon="alert")
+    return booking
 
 
 # ── Review ─────────────────────────────────────────────────────────────────

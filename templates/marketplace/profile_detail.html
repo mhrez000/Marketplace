@@ -93,6 +93,15 @@
           <p class="text-sm text-navy-400">Contact for a custom quote.</p>
           {% endfor %}
         </div>
+        {% if busy_dates %}
+        <div class="mt-4 border-t border-navy-100 pt-3">
+          <p class="text-xs font-semibold uppercase tracking-wide text-navy-400">Already booked</p>
+          <div class="mt-2 flex flex-wrap gap-1.5">
+            {% for d in busy_dates %}<span class="pill bg-beige-200 text-navy-500">{{ d|date:"d M" }}</span>{% endfor %}
+          </div>
+          <p class="mt-2 text-xs text-navy-400">Pick another date for these.</p>
+        </div>
+        {% endif %}
       </div>
 
       <!-- Enquiry form -->

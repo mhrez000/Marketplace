@@ -36,10 +36,17 @@ def search(request):
     query = request.GET.get("q", "").strip()
     location = request.GET.get("location", "").strip()
     category = request.GET.get("category", "").strip()
+    on_date = request.GET.get("date", "").strip()
 
     qs = _published_profiles()
     if category:
         qs = qs.filter(primary_category=category)
+    if on_date:
+        # Hide creatives who are blocked or already booked on the requested date.
+        from apps.profiles.services import unavailable_workspace_ids
+        busy = unavailable_workspace_ids(on_date)
+        if busy:
+            qs = qs.exclude(workspace_id__in=busy)
     if query:
         # Match a category label, or free-text across headline/bio/styles/business name.
         cat_match = next((c[0] for c in CATEGORY_CHOICES if c[1].lower() in query.lower()), None)
@@ -55,7 +62,7 @@ def search(request):
     qs = qs.order_by("-is_featured", "-avg_rating", "-review_count")
 
     return render(request, "marketplace/search.html", {
-        "query": query, "location": location, "category": category,
+        "query": query, "location": location, "category": category, "date": on_date,
         "results": list(qs), "categories": CATEGORIES, "count": qs.count(),
     })
 
@@ -70,9 +77,12 @@ def profile_detail(request, slug):
     reviews = workspace.reviews.select_related("client").order_by("-created_at")[:6]
     rating_agg = annotate_ratings(CreativeProfile.objects.filter(pk=profile.pk)).first()
 
+    from apps.profiles.services import unavailable_dates
+    busy_dates = unavailable_dates(workspace, limit=8)
+
     return render(request, "marketplace/profile_detail.html", {
         "workspace": workspace, "profile": profile, "packages": packages,
-        "reviews": reviews, "categories": CATEGORIES,
+        "reviews": reviews, "categories": CATEGORIES, "busy_dates": busy_dates,
         "avg_rating": getattr(rating_agg, "avg_rating", None),
         "review_count": getattr(rating_agg, "review_count", 0),
     })

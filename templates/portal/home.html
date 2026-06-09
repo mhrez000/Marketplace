@@ -25,9 +25,12 @@
           <p class="text-xs text-navy-400">Total ${{ q.total|floatformat:2 }} (incl. GST) · deposit ${{ q.deposit_amount|floatformat:2 }}</p>
         </div>
         {% if q.status == 'sent' or q.status == 'draft' %}
-          <form method="post" action="{% url 'portal:quote_accept' q.pk %}">{% csrf_token %}<button class="btn-accent">Accept quote</button></form>
+          <div class="flex gap-2">
+            <form method="post" action="{% url 'portal:quote_accept' q.pk %}">{% csrf_token %}<button class="btn-accent">Accept quote</button></form>
+            <form method="post" action="{% url 'portal:quote_decline' q.pk %}">{% csrf_token %}<button class="btn-ghost">Decline</button></form>
+          </div>
         {% else %}
-          <span class="pill-verified">{{ q.get_status_display }}</span>
+          <span class="pill {% if q.status == 'declined' %}bg-beige-200 text-navy-600{% else %}bg-teal-100 text-teal-700{% endif %}">{{ q.get_status_display }}</span>
         {% endif %}
       </div>
       {% endfor %}

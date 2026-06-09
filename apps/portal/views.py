@@ -57,8 +57,15 @@ def _handle_client_action(request, booking, contract):
             flow.sign_contract_client(contract, name=name, request=request)
             messages.success(request, "Contract signed. You can now pay your deposit.")
     elif action == "pay_deposit":
-        flow.pay_deposit(booking)
-        messages.success(request, "Deposit paid (test gateway) — your booking is confirmed! 🎉")
+        try:
+            flow.pay_deposit(booking)
+            messages.success(request, "Deposit paid (test gateway) — your booking is confirmed! 🎉")
+        except flow.DateUnavailable:
+            messages.error(request, "Sorry — that date was just booked by someone else. "
+                                    "Message the creative to find another date.")
+    elif action == "cancel":
+        flow.cancel_booking(booking, by="client", reason=request.POST.get("reason", "").strip())
+        messages.success(request, "Your booking has been cancelled.")
     elif action == "pay_final":
         flow.pay_final(booking)
         messages.success(request, "Final payment complete. Thank you!")
@@ -87,6 +94,22 @@ def quote_accept(request, pk):
     booking = quote.bookings.first()
     if booking:
         return redirect("portal:booking_detail", pk=booking.pk)
+    return redirect("portal:home")
+
+
+@login_required
+def quote_decline(request, pk):
+    quote = get_object_or_404(Quote, pk=pk, enquiry__client=request.user)
+    if quote.status in {Quote.Status.SENT, Quote.Status.DRAFT}:
+        quote.status = Quote.Status.DECLINED
+        quote.save(update_fields=["status", "updated_at"])
+        enquiry = quote.enquiry
+        enquiry.status = Enquiry.Status.DECLINED
+        enquiry.save(update_fields=["status", "updated_at"])
+        from apps.notifications.models import notify
+        notify(quote.enquiry.workspace.owner,
+               f"{request.user.email} declined your quote", url="/app/leads/", icon="bell")
+        messages.success(request, "Quote declined.")
     return redirect("portal:home")
 
 
