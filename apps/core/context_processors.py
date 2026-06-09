@@ -6,6 +6,7 @@ def brand(request):
     return {
         "BRAND_NAME": getattr(settings, "BRAND_NAME", "Lens"),
         "BRAND_TAGLINE": getattr(settings, "BRAND_TAGLINE", ""),
+        "SITE_URL": getattr(settings, "SITE_URL", ""),
     }
 
 

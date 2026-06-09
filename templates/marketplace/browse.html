@@ -1,0 +1,23 @@
+{% extends "base_public.html" %}
+{% block title %}Browse photographers & videographers by area — {{ BRAND_NAME }}{% endblock %}
+{% block meta_description %}Browse verified photographers and videographers across Melbourne by service and suburb on {{ BRAND_NAME }}.{% endblock %}
+
+{% block main %}
+<section class="container-content py-12">
+  <h1 class="text-3xl font-600 sm:text-4xl">Browse by service &amp; area</h1>
+  <p class="mt-2 text-navy-500">Find verified creatives across Melbourne.</p>
+
+  <div class="mt-8 space-y-8">
+    {% for s in services %}
+    <div>
+      <h2 class="text-lg">{{ s.label }}</h2>
+      <div class="mt-3 flex flex-wrap gap-2">
+        {% for sub in suburbs %}
+        <a href="{% url 'marketplace:suburb_service' s.slug sub.slug %}" class="pill bg-white text-navy-600 ring-1 ring-navy-100 hover:bg-beige-100">{{ s.noun|title }} · {{ sub.name }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

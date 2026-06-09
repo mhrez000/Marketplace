@@ -13,4 +13,7 @@ urlpatterns = [
     path("p/<slug:slug>/", views.profile_detail, name="profile"),
     path("p/<slug:slug>/enquire/", views.enquire, name="enquire"),
     path("p/<slug:slug>/favourite/", views.toggle_favourite, name="favourite"),
+    path("browse/", views.browse, name="browse"),
+    # Programmatic SEO — keep LAST (generic two-segment match).
+    path("<slug:service>/<slug:suburb>/", views.suburb_service, name="suburb_service"),
 ]

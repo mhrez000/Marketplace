@@ -221,11 +221,16 @@ class Command(BaseCommand):
         Subscription.objects.create(workspace=ws, plan=Subscription.Plan.PRO,
                                     period_end=timezone.now().date() + timedelta(days=300))
 
+        from django.utils.text import slugify
+
+        from apps.marketplace.geo import SUBURBS_BY_SLUG
+        loc = SUBURBS_BY_SLUG.get(slugify(suburb))
         CreativeProfile.objects.create(
             workspace=ws, headline=headline, bio=bio, suburb=suburb, city="Melbourne",
             state="VIC", primary_category=category, styles=styles, equipment=equipment,
             starting_price=Decimal(str(starting_price)), accent=accent, is_featured=featured,
-            response_time_hours=12 if featured else 24)
+            response_time_hours=12 if featured else 24,
+            latitude=loc["lat"] if loc else None, longitude=loc["lng"] if loc else None)
 
         service = Service.objects.create(workspace=ws, category=category,
                                          title=f"{business} — {category.replace('-', ' ').title()}")

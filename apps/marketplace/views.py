@@ -182,6 +182,45 @@ def _send_claim_email(request, user):
     )
 
 
+# Programmatic SEO: suburb × service landing pages -----------------------------
+def suburb_service(request, service, suburb):
+    from django.http import Http404
+    from .geo import SERVICES, SUBURBS_BY_SLUG, creatives_serving, nearby_suburbs
+
+    svc = SERVICES.get(service)
+    sub = SUBURBS_BY_SLUG.get(suburb)
+    if not svc or not sub:
+        raise Http404("Unknown service or suburb")
+
+    results = creatives_serving(suburb, category=svc["category"])
+    other_services = [
+        {"slug": s, "label": v["label"]} for s, v in SERVICES.items()
+        if v["category"] != svc["category"]
+    ][:4]
+    return render(request, "marketplace/suburb_service.html", {
+        "svc": svc, "service_slug": service, "sub": sub, "results": results,
+        "count": len(results), "nearby": nearby_suburbs(suburb),
+        "other_services": other_services, "categories": CATEGORIES,
+    })
+
+
+def browse(request):
+    """Crawlable index linking every service × top suburb (internal linking)."""
+    from .geo import SERVICES, SUBURBS
+    return render(request, "marketplace/browse.html", {
+        "services": [{"slug": s, **v} for s, v in SERVICES.items()],
+        "suburbs": [{"name": n, "slug": sl} for n, sl, *_ in SUBURBS],
+    })
+
+
+def robots_txt(request):
+    from django.http import HttpResponse
+    lines = ["User-agent: *", "Allow: /", "Disallow: /app/", "Disallow: /portal/",
+             "Disallow: /admin/", "Disallow: /accounts/",
+             f"Sitemap: {request.build_absolute_uri('/sitemap.xml')}"]
+    return HttpResponse("\n".join(lines), content_type="text/plain")
+
+
 # Static marketing pages -----------------------------------------------------
 def how_it_works(request):
     return render(request, "marketplace/how_it_works.html")

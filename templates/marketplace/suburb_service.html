@@ -1,0 +1,92 @@
+{% extends "base_public.html" %}
+{% load static %}
+
+{% block title %}{{ svc.label }} in {{ sub.name }}, Melbourne | {{ BRAND_NAME }}{% endblock %}
+{% block meta_description %}Compare & book {% if count %}{{ count }} {% endif %}verified {{ svc.noun }}s in {{ sub.name }}, VIC. Real portfolios, transparent packages, live availability and protected payments.{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type":"ListItem","position":1,"name":"Home","item":"{{ SITE_URL }}/"},
+    {"@type":"ListItem","position":2,"name":"{{ svc.label }}","item":"{{ SITE_URL }}/browse/"},
+    {"@type":"ListItem","position":3,"name":"{{ sub.name }}"}
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org","@type":"FAQPage",
+  "mainEntity":[
+    {"@type":"Question","name":"How much does a {{ svc.noun }} cost in {{ sub.name }}?","acceptedAnswer":{"@type":"Answer","text":"Prices vary by package and coverage. Browse {{ sub.name }} {{ svc.noun }}s on {{ BRAND_NAME }} to compare transparent, upfront pricing — no bidding wars."}},
+    {"@type":"Question","name":"Are the {{ svc.noun }}s verified?","acceptedAnswer":{"@type":"Answer","text":"Yes — every creative on {{ BRAND_NAME }} is checked for ABN, insurance and (where relevant) a Working With Children Check, with reviews tied to real completed bookings."}}
+  ]
+}
+</script>
+{% endblock %}
+
+{% block main %}
+<section class="container-content py-10">
+  <!-- Breadcrumb -->
+  <nav class="text-xs text-navy-400">
+    <a href="{% url 'marketplace:home' %}" class="hover:text-teal-600">Home</a> ·
+    <a href="{% url 'marketplace:browse' %}" class="hover:text-teal-600">Browse</a> ·
+    <span class="text-navy-600">{{ svc.label }} in {{ sub.name }}</span>
+  </nav>
+
+  <div class="mt-4 max-w-3xl">
+    <h1 class="text-3xl font-600 sm:text-4xl">{{ svc.label }} in {{ sub.name }}</h1>
+    <p class="mt-3 text-navy-500">
+      {% if count %}Compare <strong class="text-navy-700">{{ count }}</strong> verified {{ svc.noun }}{{ count|pluralize }} serving {{ sub.name }} and nearby Melbourne suburbs.{% else %}We're adding {{ svc.noun }}s in {{ sub.name }} — check nearby suburbs below or browse all creatives.{% endif %}
+      Real portfolios, transparent packages, live availability and protected payments — no reverse-auction bidding.
+    </p>
+  </div>
+
+  <!-- Results -->
+  <div class="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    {% for p in results %}
+      {% include "marketplace/_profile_card.html" %}
+    {% empty %}
+      <div class="card col-span-full p-8 text-center">
+        <p class="text-navy-500">No {{ svc.noun }}s here yet.</p>
+        <a href="{% url 'marketplace:search' %}" class="btn-ghost mt-4">Browse all creatives</a>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Internal links -->
+  <div class="mt-12 grid gap-8 sm:grid-cols-2">
+    <div>
+      <h2 class="text-lg">{{ svc.label }} nearby</h2>
+      <div class="mt-3 flex flex-wrap gap-2">
+        {% for n in nearby %}
+        <a href="{% url 'marketplace:suburb_service' service_slug n.slug %}" class="pill bg-white text-navy-600 ring-1 ring-navy-100 hover:bg-beige-100">{{ n.name }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <h2 class="text-lg">Other services in {{ sub.name }}</h2>
+      <div class="mt-3 flex flex-wrap gap-2">
+        {% for o in other_services %}
+        <a href="{% url 'marketplace:suburb_service' o.slug sub.slug %}" class="pill bg-white text-navy-600 ring-1 ring-navy-100 hover:bg-beige-100">{{ o.label }}</a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="mt-12 max-w-3xl">
+    <h2 class="text-2xl">Booking a {{ svc.noun }} in {{ sub.name }}</h2>
+    <div class="mt-4 space-y-3">
+      <div class="card p-5"><p class="font-semibold text-navy-700">How much does a {{ svc.noun }} cost in {{ sub.name }}?</p><p class="mt-1 text-sm text-navy-500">Prices vary by package and coverage. Compare transparent, upfront pricing from {{ sub.name }} creatives — no bidding wars or hidden per-lead fees.</p></div>
+      <div class="card p-5"><p class="font-semibold text-navy-700">Are these creatives verified?</p><p class="mt-1 text-sm text-navy-500">Every creative is checked for ABN, insurance and (where relevant) a WWCC, with reviews tied to real completed bookings.</p></div>
+    </div>
+    <div class="mt-6 flex gap-3">
+      <a href="{% url 'marketplace:search' %}?q={{ svc.noun }}&location={{ sub.name }}" class="btn-primary">Search {{ sub.name }}</a>
+      <a href="{% url 'marketplace:browse' %}" class="btn-ghost">Browse all areas</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

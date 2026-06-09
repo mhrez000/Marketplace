@@ -95,13 +95,14 @@ install `psycopg[binary]`, and add `django.contrib.gis` when geo search lands.
 ## Roadmap (build plan §9)
 - [x] **Phase 0 — Foundations**: project skeleton, design system, auth, public + dashboard shells
 - [x] **Phase 1 — Supply side**: workspaces + roles, creative profiles, services/packages, verification docs, admin approval queue
-- [x] **Phase 2 — Marketplace**: DB-backed search + ranking, public profile pages, enquiry flow *(PostGIS geo + programmatic SEO pages still to come)*
+- [x] **Phase 2 — Marketplace**: DB-backed search + ranking, public profile pages, enquiry flow, distance-aware geo matching (Haversine; PostGIS-upgradeable), programmatic suburb × service SEO pages + sitemap/robots/schema
 - [x] **Phase 3 — Transactional spine**: enquiry → quote (GST) → accept → contract + e-sign → deposit (test gateway) → booking state machine
 - [x] **Phase 4 — Delivery**: calendar, galleries, in-app notifications, reviews, final payment *(Google Calendar sync + email/SMS dispatch via Celery still to come)*
 - [ ] **Phase 5 — Polish + private beta**: real Stripe, Postgres/PostGIS, programmatic SEO, Celery jobs, legal pages, deploy
 
 ### Not yet wired (clearly stubbed)
 - **Real Stripe** — `apps/payments/services.py` uses a test gateway
-- **Postgres/PostGIS** — dev runs on SQLite; geo radius search is suburb text-match for now
-- **Celery / email / SMS** — notifications are in-app only
-- **Google Calendar sync**, programmatic suburb SEO pages, creative onboarding *wizard* (profiles are seeded/admin-created)
+- **Postgres/PostGIS** — dev runs on SQLite; geo radius search uses an in-Python Haversine (swap to PostGIS `ST_DWithin` at scale)
+- **Celery** — the `housekeeping` reminders/sweeps run via management command (or on page load), not yet async
+- **SMS** — email + in-app notifications are wired; SMS is not
+- **Google Calendar sync**

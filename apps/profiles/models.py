@@ -30,6 +30,9 @@ class CreativeProfile(TimeStampedModel):
     city = models.CharField(max_length=80, default="Melbourne")
     state = models.CharField(max_length=8, default="VIC")
     service_radius_km = models.PositiveIntegerField(default=40)
+    # Base location for distance search (PostGIS PointField later).
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
 
     primary_category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="weddings")
     styles = models.CharField(max_length=200, blank=True, help_text="Comma-separated style tags")
