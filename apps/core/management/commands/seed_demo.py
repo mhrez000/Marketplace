@@ -129,6 +129,8 @@ class Command(BaseCommand):
         self._expiring_quote(northcote, admin_ws, event_date=today + timedelta(days=35), days_left=1)
         self._expiring_quote(olivia, harper, event_date=today + timedelta(days=70), days_left=-2)
         self._overdue_deposit_booking(sam, admin_ws, event_date=today + timedelta(days=55))
+        # A completed job still awaiting a review (drives the review nudge).
+        self._completed_booking(sam, admin_ws, event_date=today - timedelta(days=32), review=False)
 
         # Saved/favourite creatives for the portal.
         from apps.marketplace.models import Favourite
@@ -294,7 +296,7 @@ class Command(BaseCommand):
         b.transition(Booking.Status.EDITING, force=True)
         return b
 
-    def _completed_booking(self, client, ws, *, event_date, rating=5,
+    def _completed_booking(self, client, ws, *, event_date, rating=5, review=True,
                            review_body="Incredible work — exceeded our expectations!"):
         b = self._confirmed_booking(client, ws, event_date=event_date)
         b.transition(Booking.Status.SHOOT_COMPLETED, force=True)
@@ -307,7 +309,8 @@ class Command(BaseCommand):
                                  is_favourite=(i < 2))
         flow.deliver_gallery(g)
         flow.pay_final(b)
-        flow.create_review(booking=b, rating=rating, title="Highly recommend", body=review_body)
+        if review:
+            flow.create_review(booking=b, rating=rating, title="Highly recommend", body=review_body)
         return b
 
     def _contract_templates(self):

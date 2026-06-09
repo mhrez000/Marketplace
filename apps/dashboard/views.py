@@ -62,11 +62,18 @@ def overview(request):
     stale_leads = sum(1 for e in new_leads if e.is_stale)
     avg_resp = availability.avg_response_hours(ws)
 
+    from django.db.models import Avg, Count
+    from apps.reviews.models import Review
+    review_agg = Review.objects.filter(workspace=ws).aggregate(n=Count("id"), avg=Avg("rating"))
+    pending_reviews = sum(1 for b in bookings.filter(status=Booking.Status.COMPLETED) if b.awaiting_review)
+
     return render(request, "dashboard/overview.html", {
         "active": "overview", "ws": ws, "stats": stats, "leads": leads,
         "upcoming": upcoming, "bookings_count": bookings.count(),
         "profile_pct": _profile_completeness(ws),
         "stale_leads": stale_leads, "avg_response": avg_resp,
+        "review_count": review_agg["n"], "avg_review": review_agg["avg"],
+        "pending_reviews": pending_reviews,
     })
 
 

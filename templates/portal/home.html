@@ -6,6 +6,13 @@
   <h1 class="text-3xl font-600">My portal</h1>
   <p class="mt-1 text-navy-500">Track your enquiries, quotes and bookings.</p>
 
+  {% for b in bookings %}{% if b.awaiting_review %}
+  <a href="{% url 'portal:booking_detail' b.pk %}" class="mt-6 flex items-center gap-3 rounded-2xl bg-sky-100 p-4 ring-1 ring-sky-200 hover:bg-sky-200/70">
+    <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-amber-500">★</span>
+    <p class="text-sm text-navy-700">How was <strong>{{ b.workspace.business_name }}</strong>? Leave a quick review →</p>
+  </a>
+  {% endif %}{% endfor %}
+
   {% if saved %}
   <h2 class="mt-8 text-xl">Saved creatives</h2>
   <div class="mt-3 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">

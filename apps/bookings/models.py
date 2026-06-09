@@ -59,6 +59,7 @@ class Booking(UUIDTimeStampedModel):
     total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     deposit_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     refunded_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    review_reminded_at = models.DateTimeField(null=True, blank=True)
     internal_notes = models.TextField(blank=True)
 
     def __str__(self):
@@ -88,6 +89,10 @@ class Booking(UUIDTimeStampedModel):
     @property
     def is_complete(self):
         return self.status in {self.Status.COMPLETED, self.Status.ARCHIVED}
+
+    @property
+    def awaiting_review(self):
+        return self.is_complete and not hasattr(self, "review")
 
 
 class CalendarEvent(TimeStampedModel):
