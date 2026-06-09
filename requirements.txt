@@ -11,8 +11,10 @@ whitenoise>=6.6
 gunicorn>=22.0
 psycopg[binary]>=3.2
 
+# Background jobs — run synchronously until REDIS_URL is set, then async + Beat.
+celery>=5.4
+redis>=5.0
+
 # Added when their phase lands:
-# celery>=5.4                 # background jobs (move housekeeping off-request)
-# redis>=5.0                  # broker/cache
 # stripe>=10.0                # real payments (set STRIPE_* env to activate)
 # sentry-sdk>=2.0             # error tracking

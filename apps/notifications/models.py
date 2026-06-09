@@ -20,8 +20,9 @@ def notify(user, verb, url="", icon="bell", email=False):
     to also send a transactional email (build plan §16 channel matrix). Email
     uses the console backend in dev; Celery/async delivery lands later."""
     n = Notification.objects.create(user=user, verb=verb, url=url, icon=icon)
-    if email and getattr(user, "email", ""):
-        _send_email(user, verb, url)
+    if email and getattr(user, "email", "") and getattr(user, "pk", None):
+        from .tasks import send_notification_email
+        send_notification_email.delay(user.pk, verb, url)
     return n
 
 

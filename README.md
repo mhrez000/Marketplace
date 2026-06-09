@@ -121,6 +121,6 @@ Tailwind CSS is pre-built and committed, so the image needs no Node.
 ### Not yet wired (clearly stubbed)
 - **Real Stripe** — `apps/payments/services.py` uses a test gateway
 - **Postgres/PostGIS** — dev runs on SQLite; geo radius search uses an in-Python Haversine (swap to PostGIS `ST_DWithin` at scale)
-- **Celery** — the `housekeeping` reminders/sweeps run via management command (or on page load), not yet async
+- **Celery** is wired but runs **inline (eager)** until `REDIS_URL` is set; then emails/reminders process on a worker and the hourly Beat schedule activates (`celery -A config worker` / `celery -A config beat`)
 - **SMS** — email + in-app notifications are wired; SMS is not
 - **Google Calendar sync**

@@ -188,3 +188,23 @@ SITE_URL = env("SITE_URL", default="http://localhost:8000")
 STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
 STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
+
+# ---------------------------------------------------------------------------
+# Celery — background jobs. With NO REDIS_URL, tasks run inline (eager), so the
+# app works exactly as before. Set REDIS_URL to process them on a worker and
+# enable the Beat schedule.
+# ---------------------------------------------------------------------------
+REDIS_URL = env("REDIS_URL", default="")
+CELERY_BROKER_URL = REDIS_URL or "memory://"
+CELERY_RESULT_BACKEND = REDIS_URL or "cache+memory://"
+CELERY_TASK_ALWAYS_EAGER = not bool(REDIS_URL)   # run synchronously without a broker
+CELERY_TASK_EAGER_PROPAGATES = True
+CELERY_TASK_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULE = {
+    "hourly-housekeeping": {
+        "task": "apps.core.tasks.run_housekeeping",
+        "schedule": 60 * 60,  # every hour
+    },
+}
