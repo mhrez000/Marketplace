@@ -120,7 +120,7 @@ Tailwind CSS is pre-built and committed, so the image needs no Node.
 
 ### Not yet wired (clearly stubbed)
 - **Real Stripe** — `apps/payments/services.py` uses a test gateway
-- **Postgres/PostGIS** — dev runs on SQLite; geo radius search uses an in-Python Haversine (swap to PostGIS `ST_DWithin` at scale)
+- **Postgres/PostGIS** — dev runs on SQLite with an in-Python Haversine; on a PostGIS Postgres DB set `USE_POSTGIS=True` and radius search uses index-backed `ST_DWithin` automatically (the profiles migration installs the extension + GiST index). No GDAL/GeoDjango needed — the query runs server-side against the lat/lng columns.
 - **Celery** is wired but runs **inline (eager)** until `REDIS_URL` is set; then emails/reminders process on a worker and the hourly Beat schedule activates (`celery -A config worker` / `celery -A config beat`)
 - **SMS** — email + in-app notifications are wired; SMS is not
 - **Google Calendar sync**

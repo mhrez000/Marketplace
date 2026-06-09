@@ -112,6 +112,11 @@ DATABASES = {
     )
 }
 
+# Geo search: use PostGIS ST_DWithin when on a PostGIS-enabled Postgres DB,
+# else fall back to an in-Python Haversine (apps/marketplace/geo.py). Set to
+# True only when DATABASE_URL points at Postgres with the postgis extension.
+USE_POSTGIS = env.bool("USE_POSTGIS", default=False)
+
 # ---------------------------------------------------------------------------
 # Auth
 # ---------------------------------------------------------------------------

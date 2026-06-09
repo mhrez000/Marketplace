@@ -57,30 +57,57 @@ def haversine_km(lat1, lng1, lat2, lng2):
 
 def creatives_serving(suburb_slug, *, category=None):
     """Listed creatives whose service area covers `suburb_slug` (within their
-    radius of their base), ranked featured → rating → distance."""
-    from django.utils.text import slugify
+    radius of their base), ranked featured → rating → distance.
+
+    Uses PostGIS ST_DWithin when enabled (fast, index-backed); otherwise an
+    in-Python Haversine that works on SQLite."""
+    from django.conf import settings
+    from django.db import connection
 
     from apps.core.selectors import annotate_ratings
     from apps.profiles.models import CreativeProfile
     from apps.profiles.services import filter_listable
 
     s = SUBURBS_BY_SLUG.get(suburb_slug)
+    if not s:
+        return []
+
     qs = filter_listable(
         CreativeProfile.objects.filter(workspace__is_published=True).select_related("workspace"))
     if category:
         qs = qs.filter(primary_category=category)
     qs = annotate_ratings(qs)
 
+    if getattr(settings, "USE_POSTGIS", False) and connection.vendor == "postgresql":
+        return _serving_postgis(qs, s)
+    return _serving_haversine(qs, s, suburb_slug)
+
+
+def _serving_haversine(qs, s, suburb_slug):
+    from django.utils.text import slugify
     out = []
     for p in qs:
-        if s and p.latitude is not None and p.longitude is not None:
+        if p.latitude is not None and p.longitude is not None:
             dist = haversine_km(s["lat"], s["lng"], p.latitude, p.longitude)
             if dist <= (p.service_radius_km or 40):
                 out.append((dist, p))
-        elif s and slugify(p.suburb) == suburb_slug:
+        elif slugify(p.suburb) == suburb_slug:
             out.append((0.0, p))
     out.sort(key=lambda t: (not t[1].is_featured, -(t[1].avg_rating or 0), t[0]))
     return [p for _, p in out]
+
+
+def _serving_postgis(qs, s):
+    """Index-backed radius filter via PostGIS ST_DWithin on the lat/lng columns
+    (geography metres). Requires the postgis extension (see profiles migration)."""
+    from django.db.models.expressions import RawSQL
+    point = "geography(ST_MakePoint(longitude, latitude))"
+    target = "geography(ST_MakePoint(%s, %s))"
+    qs = qs.annotate(
+        _within=RawSQL(f"ST_DWithin({point}, {target}, service_radius_km * 1000.0)", (s["lng"], s["lat"])),
+        _dist=RawSQL(f"ST_Distance({point}, {target})", (s["lng"], s["lat"])),
+    ).filter(_within=True).order_by("-is_featured", "-avg_rating", "_dist")
+    return list(qs)
 
 
 def nearby_suburbs(slug, *, limit=6):
