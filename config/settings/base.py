@@ -212,4 +212,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.core.tasks.run_housekeeping",
         "schedule": 60 * 60,  # every hour
     },
+    "daily-message-digest": {
+        "task": "apps.notifications.message_digest",
+        "schedule": 60 * 60 * 24,  # once a day
+    },
 }
+
+# SMS (ClickSend) — inert until SMS_ENABLED + credentials are set. Reserved for
+# money/time-critical events for users who opted in (build plan §16).
+SMS_ENABLED = env.bool("SMS_ENABLED", default=False)
+CLICKSEND_USERNAME = env("CLICKSEND_USERNAME", default="")
+CLICKSEND_API_KEY = env("CLICKSEND_API_KEY", default="")

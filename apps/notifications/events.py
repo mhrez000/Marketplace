@@ -42,6 +42,9 @@ EVENTS = {
                          subject="A lead is waiting", cta="Respond now", icon="alert"),
     "dispute_raised": dict(category=TRANSACTIONAL, channels=["in_app", "email"],
                            subject="A dispute was raised", cta="View details", icon="alert"),
+    # ── Digest ─────────────────────────────────────────────────────────────
+    "message_digest": dict(category=DIGEST, channels=["in_app", "email"],
+                           subject="You have new messages", cta="Open messages", icon="inbox"),
 }
 
 

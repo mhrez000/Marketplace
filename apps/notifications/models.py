@@ -68,7 +68,14 @@ def dispatch(event_key, recipient, *, verb, url=""):
             and getattr(recipient, "pk", None) and _email_allowed(recipient, ev["category"])):
         send_notification_email.delay(recipient.pk, verb, url,
                                       subject=ev["subject"], cta_label=ev["cta"])
-    # "sms" channel is reserved here and wired in a later phase.
+
+    # SMS — only for urgent events, and only if the user opted in with a phone.
+    if "sms" in ev["channels"]:
+        pref = getattr(recipient, "notification_preference", None)
+        if pref and pref.sms_enabled and pref.sms_phone:
+            from django.conf import settings
+            from .tasks import send_sms_task
+            send_sms_task.delay(pref.sms_phone, f"{getattr(settings, 'BRAND_NAME', 'Lens')}: {verb}")
     return n
 
 

@@ -48,6 +48,44 @@ class DispatchMatrixTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
 
 
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True,
+                   EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class SmsAndDigestTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email="u@t.com", password="x")
+
+    def test_sms_inert_without_config(self):
+        from apps.notifications.sms import send_sms
+        self.assertFalse(send_sms("0400000000", "hi"))  # SMS_ENABLED defaults False
+
+    def test_sms_only_for_opted_in_users(self):
+        from unittest.mock import patch
+        from apps.notifications.models import NotificationPreference
+        # No preference -> no SMS attempted on an SMS-channel event.
+        with patch("apps.notifications.sms.send_sms") as m:
+            dispatch("booking_confirmed", self.user, verb="confirmed", url="/portal/")
+            self.assertFalse(m.called)
+        # Opted in with a phone -> SMS attempted.
+        NotificationPreference.objects.create(user=self.user, sms_enabled=True, sms_phone="0400000000")
+        with patch("apps.notifications.sms.send_sms") as m:
+            dispatch("booking_confirmed", self.user, verb="confirmed", url="/portal/")
+            self.assertTrue(m.called)
+
+    def test_message_digest_emails_recipient(self):
+        from apps.messaging.models import Message, Thread
+        from apps.notifications.tasks import message_digest
+        from apps.workspaces.models import Workspace
+        creative = User.objects.create_user(email="cr@t.com", password="x")
+        ws = Workspace.objects.create(owner=creative, business_name="S")
+        thread = Thread.objects.create(workspace=ws, client=self.user)
+        Message.objects.create(thread=thread, sender=self.user, body="Hi, any update?")
+        mail.outbox = []
+        result = message_digest()
+        self.assertIn("1 digest", result)            # the creative (recipient) gets it
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("cr@t.com", mail.outbox[0].to)
+
+
 class SettingsPageTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(email="s@t.com", password="pw")
