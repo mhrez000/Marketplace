@@ -1,0 +1,45 @@
+{% extends "base_public.html" %}
+{% block title %}{{ other }} — Messages — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<section class="container-content py-8">
+  <a href="{% url 'messaging:inbox' %}" class="text-sm text-teal-600 hover:underline">← All messages</a>
+
+  <div class="card mt-3 overflow-hidden">
+    <!-- Header -->
+    <div class="flex items-center justify-between gap-3 border-b border-navy-100 bg-beige-100/60 px-5 py-4">
+      <div class="flex items-center gap-3">
+        <span class="grid h-10 w-10 place-items-center rounded-full bg-teal-500 text-sm font-bold text-white">{{ other|first|upper }}</span>
+        <div>
+          <p class="font-semibold text-navy-700">{{ other }}</p>
+          {% if thread.subject %}<p class="text-xs text-navy-400">{{ thread.subject }}</p>{% endif %}
+        </div>
+      </div>
+      {% if thread.booking %}
+        <a href="{% if is_creative %}{% url 'dashboard:booking_detail' thread.booking.pk %}{% else %}{% url 'portal:booking_detail' thread.booking.pk %}{% endif %}" class="btn-ghost !py-1.5 !px-3 text-xs">View booking</a>
+      {% endif %}
+    </div>
+
+    <!-- Messages -->
+    <div class="max-h-[60vh] space-y-3 overflow-y-auto p-5">
+      {% for m in messages_list %}
+      <div class="flex {% if m.sender == request.user %}justify-end{% endif %}">
+        <div class="max-w-[75%]">
+          <div class="rounded-2xl px-4 py-2.5 text-sm {% if m.sender == request.user %}bg-navy-700 text-white{% else %}bg-beige-100 text-navy-700{% endif %}">{{ m.body|linebreaksbr }}</div>
+          <p class="mt-1 px-1 text-[11px] text-navy-300 {% if m.sender == request.user %}text-right{% endif %}">{{ m.created_at|date:"d M, H:i" }}</p>
+        </div>
+      </div>
+      {% empty %}
+      <p class="py-8 text-center text-sm text-navy-400">No messages yet — say hello 👋</p>
+      {% endfor %}
+    </div>
+
+    <!-- Reply -->
+    <form method="post" class="flex gap-2 border-t border-navy-100 p-3">
+      {% csrf_token %}
+      <input name="body" class="input flex-1" placeholder="Write a message…" autocomplete="off" required>
+      <button class="btn-primary">Send</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

@@ -11,12 +11,17 @@ def brand(request):
 
 
 def notifications(request):
-    """Recent notifications + unread count for the dashboard bell."""
+    """Recent notifications + unread counts for the header bell & Messages link."""
     user = getattr(request, "user", None)
     if not user or not user.is_authenticated:
         return {}
-    qs = user.notifications.all()[:10]
+    from django.db.models import Q
+    from apps.messaging.models import Message
+    unread_messages = (Message.objects.filter(read_at__isnull=True)
+                       .filter(Q(thread__client=user) | Q(thread__workspace__owner=user))
+                       .exclude(sender=user).count())
     return {
-        "nav_notifications": qs,
+        "nav_notifications": user.notifications.all()[:10],
         "nav_unread_count": user.notifications.filter(is_read=False).count(),
+        "nav_unread_messages": unread_messages,
     }

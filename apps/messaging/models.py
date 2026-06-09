@@ -24,6 +24,25 @@ class Thread(TimeStampedModel):
     def last_message(self):
         return self.messages.order_by("-created_at").first()
 
+    def is_participant(self, user):
+        return user.id in (self.client_id, self.workspace.owner_id)
+
+    def other_party(self, user):
+        return self.workspace.owner if user.id == self.client_id else self.client
+
+    def other_label(self, user):
+        """Who the conversation is *with*, from `user`'s point of view."""
+        if user.id == self.client_id:
+            return self.workspace.business_name
+        return self.client.get_full_name() or self.client.email
+
+    def unread_for(self, user):
+        return self.messages.filter(read_at__isnull=True).exclude(sender=user).count()
+
+    def mark_read_for(self, user):
+        from django.utils import timezone
+        self.messages.filter(read_at__isnull=True).exclude(sender=user).update(read_at=timezone.now())
+
 
 class Message(TimeStampedModel):
     thread = models.ForeignKey(Thread, on_delete=models.CASCADE, related_name="messages")

@@ -1,0 +1,32 @@
+{% extends "base_public.html" %}
+{% block title %}Messages — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<section class="container-content py-10">
+  <h1 class="text-2xl font-600">Messages</h1>
+  <p class="mt-1 text-sm text-navy-500">All your conversations in one place.</p>
+
+  <div class="card mt-6 divide-y divide-navy-100/70">
+    {% for i in items %}
+    <a href="{% url 'messaging:thread' i.thread.pk %}" class="flex items-center gap-4 p-4 hover:bg-beige-100/60 {% if i.unread %}bg-sky-50/60{% endif %}">
+      <span class="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-teal-500 text-sm font-bold text-white">{{ i.other|first|upper }}</span>
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center justify-between gap-2">
+          <p class="truncate font-semibold text-navy-700">{{ i.other }}</p>
+          <span class="shrink-0 text-xs text-navy-400">{{ i.last.created_at|timesince }} ago</span>
+        </div>
+        <p class="truncate text-sm {% if i.unread %}font-medium text-navy-700{% else %}text-navy-400{% endif %}">
+          {% if i.last.sender == request.user %}You: {% endif %}{{ i.last.body }}
+        </p>
+      </div>
+      {% if i.unread %}<span class="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-teal-500 px-1.5 text-[11px] font-bold text-white">{{ i.unread }}</span>{% endif %}
+    </a>
+    {% empty %}
+    <div class="p-12 text-center text-navy-400">
+      <p>No conversations yet.</p>
+      <p class="mt-1 text-sm">Messages start when you enquire or receive an enquiry.</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

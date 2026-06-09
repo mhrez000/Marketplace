@@ -23,17 +23,13 @@ def send_sms_task(phone, body):
 def message_digest():
     """Daily digest: one email per user with new inbound messages (build plan §16
     — messages are digested, not one-email-per-message). Runs via Celery Beat."""
-    from datetime import timedelta
-
     from django.contrib.auth import get_user_model
-    from django.utils import timezone
 
     from apps.messaging.models import Message
     from .models import dispatch
 
-    since = timezone.now() - timedelta(days=1)
     counts = {}
-    for m in Message.objects.filter(created_at__gte=since).select_related(
+    for m in Message.objects.filter(read_at__isnull=True).select_related(
             "thread", "thread__workspace"):
         parties = {m.thread.client_id, m.thread.workspace.owner_id}
         recipients = parties - {m.sender_id}

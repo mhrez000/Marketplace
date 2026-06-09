@@ -13,6 +13,7 @@
     <div class="hidden items-center gap-2 md:flex">
       {% if user.is_authenticated %}
         <a href="{% url 'portal:home' %}" class="rounded-full px-3.5 py-2 text-sm font-medium text-navy-600 hover:text-navy-900">My portal</a>
+        <a href="{% url 'messaging:inbox' %}" class="relative rounded-full px-3.5 py-2 text-sm font-medium text-navy-600 hover:text-navy-900">Messages{% if nav_unread_messages %}<span class="ml-1 inline-grid h-4 min-w-4 place-items-center rounded-full bg-teal-500 px-1 text-[10px] font-bold text-white">{{ nav_unread_messages }}</span>{% endif %}</a>
         <!-- Notification bell (clients + creatives) -->
         <div x-data="{ bell: false }" class="relative">
           <button @click="bell = !bell" class="relative grid h-10 w-10 place-items-center rounded-full bg-white text-navy-600 ring-1 ring-navy-100 hover:text-navy-900">
