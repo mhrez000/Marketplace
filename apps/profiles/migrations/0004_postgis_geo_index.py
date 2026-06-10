@@ -12,13 +12,17 @@ INDEX = "profiles_creativeprofile_geo_gix"
 def enable_postgis(apps, schema_editor):
     if schema_editor.connection.vendor != "postgresql":
         return
-    with schema_editor.connection.cursor() as cursor:
-        cursor.execute("CREATE EXTENSION IF NOT EXISTS postgis;")
-        cursor.execute(
-            f"CREATE INDEX IF NOT EXISTS {INDEX} "
-            "ON profiles_creativeprofile "
-            "USING gist (geography(ST_MakePoint(longitude, latitude)));"
-        )
+    try:
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute("CREATE EXTENSION IF NOT EXISTS postgis;")
+            cursor.execute(
+                f"CREATE INDEX IF NOT EXISTS {INDEX} "
+                "ON profiles_creativeprofile "
+                "USING gist (geography(ST_MakePoint(longitude, latitude)));"
+            )
+    except Exception as exc:  # postgis not available on this server — fine:
+        # USE_POSTGIS stays off and geo search uses the Haversine fallback.
+        print(f"PostGIS unavailable, skipping extension/index ({exc}).")
 
 
 def drop_index(apps, schema_editor):
