@@ -27,8 +27,7 @@ BANNER = (
 PREVIEW_SCRIPT = """
 <script>
 document.addEventListener('submit', function (e) {
-  var m = (e.target.getAttribute('method') || 'get').toLowerCase();
-  if (m === 'post') {  // GET forms (search) still work on a static host
+  if (e.target.hasAttribute('data-preview-post')) {  // GET forms (search) still work
     e.preventDefault();
     alert('This is a static preview \\u2014 logging in, enquiries and payments need the real app.\\n\\nRun it in one click: github.com/mhrez000/Marketplace \\u2192 Code \\u2192 Create codespace.');
   }
@@ -94,6 +93,11 @@ class Command(BaseCommand):
         if base:
             # Root-absolute links/assets -> under the Pages subpath ("//" CDN refs untouched).
             html = re.sub(r'(href|src|action)="/(?!/)', rf'\1="{base}/', html)
+        # Neutralise POST forms in the markup itself: method="dialog" never
+        # leaves the page (no JS required), so GitHub's 405 page is impossible.
+        # The data attribute lets the script show the friendly explainer.
+        html = re.sub(r'method="post"', 'method="dialog" data-preview-post="1"',
+                      html, flags=re.IGNORECASE)
         # Inject the preview banner right after the opening <body> tag.
         m = re.search(r"<body[^>]*>", html)
         if m:
