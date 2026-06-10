@@ -1,0 +1,100 @@
+{% extends "base_app.html" %}
+{% block title %}Ops — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<div class="flex flex-wrap items-end justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-600">Platform ops</h1>
+    <p class="mt-1 text-sm text-navy-500">Today's pulse — money, queues and anything needing a human.</p>
+  </div>
+  <div class="flex gap-2">
+    <a href="/admin/" class="btn-ghost">Django admin</a>
+    <a href="{% url 'dashboard:broadcast' %}" class="btn-primary">Broadcast</a>
+  </div>
+</div>
+
+<!-- Money + volume -->
+<div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  {% for s in stats %}
+  <div class="card p-5">
+    <p class="text-sm text-navy-400">{{ s.label }}</p>
+    <p class="mt-1 font-display text-3xl font-600 text-navy-700">{{ s.value }}</p>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Action queues -->
+<div class="mt-6 grid gap-4 sm:grid-cols-3">
+  <a href="/admin/workspaces/workspace/?is_published__exact=0" class="card-hover p-5 {% if pending_ws.count %}ring-1 ring-amber-200{% endif %}">
+    <div class="flex items-center justify-between">
+      <p class="text-sm font-semibold text-navy-700">Approvals pending</p>
+      <span class="pill {% if pending_ws.count %}bg-amber-100 text-amber-700{% else %}bg-teal-100 text-teal-700{% endif %}">{{ pending_ws.count }}</span>
+    </div>
+    <p class="mt-1 text-xs text-navy-400">{% for w in pending_ws|slice:":3" %}{{ w.business_name }}{% if not forloop.last %}, {% endif %}{% empty %}Queue clear ✓{% endfor %}</p>
+    <p class="mt-2 text-xs text-navy-400">+ {{ pending_docs_count }} verification doc(s) to review</p>
+  </a>
+
+  <a href="/admin/bookings/dispute/" class="card-hover p-5 {% if open_disputes.count %}ring-1 ring-red-200{% endif %}">
+    <div class="flex items-center justify-between">
+      <p class="text-sm font-semibold text-navy-700">Open disputes</p>
+      <span class="pill {% if open_disputes.count %}bg-red-100 text-red-600{% else %}bg-teal-100 text-teal-700{% endif %}">{{ open_disputes.count }}</span>
+    </div>
+    <p class="mt-1 text-xs text-navy-400">{% for d in open_disputes|slice:":2" %}{{ d.get_reason_display }} — {{ d.booking.title|truncatechars:28 }}{% if not forloop.last %} · {% endif %}{% empty %}None open ✓{% endfor %}</p>
+  </a>
+
+  <a href="/admin/payments/invoice/?status__exact=overdue" class="card-hover p-5 {% if overdue_invoices.count %}ring-1 ring-amber-200{% endif %}">
+    <div class="flex items-center justify-between">
+      <p class="text-sm font-semibold text-navy-700">Overdue invoices</p>
+      <span class="pill {% if overdue_invoices.count %}bg-amber-100 text-amber-700{% else %}bg-teal-100 text-teal-700{% endif %}">{{ overdue_invoices.count }}</span>
+    </div>
+    <p class="mt-1 text-xs text-navy-400">{% for i in overdue_invoices|slice:":2" %}${{ i.amount|floatformat:0 }} — {{ i.booking.title|truncatechars:26 }}{% if not forloop.last %} · {% endif %}{% empty %}All paid up ✓{% endfor %}</p>
+  </a>
+</div>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-3">
+  <!-- Recent bookings -->
+  <div class="card p-5 lg:col-span-2">
+    <h2 class="text-lg">Latest bookings</h2>
+    <div class="mt-3 overflow-x-auto">
+      <table class="w-full text-left text-sm">
+        <thead><tr class="border-b border-navy-100 text-xs uppercase tracking-wide text-navy-400">
+          <th class="pb-2 font-semibold">Booking</th><th class="pb-2 font-semibold">Studio</th>
+          <th class="pb-2 font-semibold">Total</th><th class="pb-2 font-semibold">Status</th>
+        </tr></thead>
+        <tbody class="divide-y divide-navy-100/70">
+          {% for b in recent_bookings %}
+          <tr>
+            <td class="py-2.5 font-medium text-navy-700">{{ b.title|truncatechars:34 }}</td>
+            <td class="py-2.5 text-navy-500">{{ b.workspace.business_name }}</td>
+            <td class="py-2.5 font-semibold text-navy-700">${{ b.total|floatformat:0 }}</td>
+            <td class="py-2.5">{% include "partials/_status.html" with status=b.status label=b.get_status_display %}</td>
+          </tr>
+          {% empty %}<tr><td colspan="4" class="py-6 text-center text-navy-400">No bookings yet.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Today + growth -->
+  <div class="space-y-5">
+    <div class="card p-5">
+      <h2 class="text-lg">Today's shoots</h2>
+      <div class="mt-3 space-y-2">
+        {% for b in todays_shoots %}
+        <div class="rounded-xl bg-beige-100 p-3">
+          <p class="text-sm font-semibold text-navy-700">{{ b.title|truncatechars:36 }}</p>
+          <p class="text-xs text-navy-400">{{ b.workspace.business_name }} · {{ b.location|default:"TBC" }}</p>
+        </div>
+        {% empty %}<p class="text-sm text-navy-400">No shoots today.</p>{% endfor %}
+      </div>
+    </div>
+    <div class="card p-5">
+      <h2 class="text-lg">Growth</h2>
+      <div class="mt-3 flex items-center justify-between text-sm">
+        <span class="text-navy-500">New signups (7d)</span>
+        <span class="font-display text-2xl font-600 text-teal-600">{{ signups_week }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

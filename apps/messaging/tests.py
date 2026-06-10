@@ -45,3 +45,16 @@ class MessagingInboxTests(TestCase):
     def test_inbox_requires_login(self):
         r = self.client.get("/messages/", SERVER_NAME="localhost")
         self.assertEqual(r.status_code, 302)
+
+    def test_feed_partial_returns_fragment_and_marks_read(self):
+        self.client.force_login(self.creative)
+        r = self.client.get(f"/messages/{self.thread.pk}/feed/", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 200)
+        self.assertNotContains(r, "<html")               # fragment, not a full page
+        self.assertContains(r, "Hi, are you free?")
+        self.assertEqual(self.thread.unread_for(self.creative), 0)  # polling marks read
+
+    def test_feed_outsider_404(self):
+        self.client.force_login(self.outsider)
+        r = self.client.get(f"/messages/{self.thread.pk}/feed/", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 404)

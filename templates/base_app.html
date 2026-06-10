@@ -23,7 +23,11 @@
       <a href="{% url 'dashboard:profile' %}" class="{% if a == 'profile' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='user' %}Profile</a>
       {% if ws %}<a href="{% url 'marketplace:profile' ws.slug %}" class="nav-link">{% include "dashboard/_navicon.html" with name='image' %}View public page</a>{% endif %}
       <a href="{% url 'settings_notifications' %}" class="nav-link">{% include "dashboard/_navicon.html" with name='cog' %}Settings</a>
-      {% if request.user.is_staff %}<a href="{% url 'dashboard:broadcast' %}" class="{% if a == 'broadcast' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='megaphone' %}Broadcast</a>{% endif %}
+      {% if request.user.is_staff %}
+      <div class="my-2 border-t border-navy-100/70"></div>
+      <a href="{% url 'dashboard:ops' %}" class="{% if a == 'ops' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='grid' %}Platform ops</a>
+      <a href="{% url 'dashboard:broadcast' %}" class="{% if a == 'broadcast' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='megaphone' %}Broadcast</a>
+      {% endif %}
       {% endwith %}
     </nav>
     <div class="absolute inset-x-3 bottom-3">

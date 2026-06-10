@@ -330,6 +330,51 @@ def deliveries(request):
 
 
 @login_required
+def ops(request):
+    """Staff-only ops dashboard — today's platform pulse (build plan §13):
+    GMV, bookings, enquiries, open disputes, overdue invoices, pending
+    approvals, and the latest activity."""
+    from django.http import Http404
+
+    if not request.user.is_staff:
+        raise Http404
+
+    from apps.bookings.models import Dispute
+    from apps.profiles.models import VerificationDocument
+
+    today = timezone.now().date()
+    week_ago = timezone.now() - timezone.timedelta(days=7)
+
+    payments = Payment.objects.filter(status=Payment.Status.SUCCEEDED)
+    gmv_total = payments.aggregate(s=Sum("amount"))["s"] or 0
+    gmv_week = payments.filter(paid_at__gte=week_ago).aggregate(s=Sum("amount"))["s"] or 0
+    fees_total = payments.aggregate(s=Sum("platform_fee"))["s"] or 0
+
+    stats = [
+        {"label": "GMV (all time)", "value": f"${gmv_total:,.0f}"},
+        {"label": "GMV (7 days)", "value": f"${gmv_week:,.0f}"},
+        {"label": "Platform fees", "value": f"${fees_total:,.0f}"},
+        {"label": "Enquiries (7d)", "value": Enquiry.objects.filter(created_at__gte=week_ago).count()},
+    ]
+
+    from django.contrib.auth import get_user_model
+
+    pending_ws = Workspace.objects.filter(is_published=False)
+    pending_docs = VerificationDocument.objects.filter(status=VerificationDocument.Status.PENDING)
+    open_disputes = Dispute.objects.filter(status__in=["open", "under_review"]).select_related("booking", "raised_by")
+    overdue_invoices = Invoice.objects.filter(status=Invoice.Status.OVERDUE).select_related("booking")
+
+    return render(request, "dashboard/ops.html", {
+        "active": "ops", "ws": get_active_workspace(request.user), "stats": stats,
+        "pending_ws": pending_ws, "pending_docs_count": pending_docs.count(),
+        "open_disputes": open_disputes, "overdue_invoices": overdue_invoices,
+        "recent_bookings": Booking.objects.select_related("client", "workspace").order_by("-created_at")[:8],
+        "todays_shoots": Booking.objects.filter(event_date=today).select_related("workspace", "client"),
+        "signups_week": get_user_model().objects.filter(date_joined__gte=week_ago).count(),
+    })
+
+
+@login_required
 def broadcast(request):
     """Staff-only: send a platform announcement to a target audience."""
     from django.http import Http404

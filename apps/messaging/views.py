@@ -48,3 +48,16 @@ def thread_detail(request, pk):
         "other": thread.other_label(request.user),
         "is_creative": request.user.id == thread.workspace.owner_id,
     })
+
+
+@login_required
+def thread_feed(request, pk):
+    """HTMX partial — just the message bubbles, polled every few seconds so new
+    replies appear without a manual refresh."""
+    thread = get_object_or_404(Thread.objects.select_related("workspace"), pk=pk)
+    if not thread.is_participant(request.user):
+        raise Http404
+    thread.mark_read_for(request.user)
+    return render(request, "messaging/_messages.html", {
+        "messages_list": thread.messages.select_related("sender"),
+    })

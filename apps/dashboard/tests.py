@@ -46,3 +46,21 @@ class AnalyticsTests(TestCase):
         r = self.client.get("/app/analytics/", SERVER_NAME="localhost")
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "Conversion funnel")
+
+
+class OpsDashboardTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(email="staff@t.com", password="x", is_staff=True)
+        self.normal = User.objects.create_user(email="n@t.com", password="x")
+
+    def test_staff_sees_ops(self):
+        self.client.force_login(self.staff)
+        r = self.client.get("/app/ops/", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "GMV")
+        self.assertContains(r, "Open disputes")
+
+    def test_non_staff_404(self):
+        self.client.force_login(self.normal)
+        r = self.client.get("/app/ops/", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 404)

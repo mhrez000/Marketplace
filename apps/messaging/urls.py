@@ -7,4 +7,5 @@ app_name = "messaging"
 urlpatterns = [
     path("", views.inbox, name="inbox"),
     path("<int:pk>/", views.thread_detail, name="thread"),
+    path("<int:pk>/feed/", views.thread_feed, name="thread_feed"),
 ]

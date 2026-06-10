@@ -16,6 +16,7 @@ urlpatterns = [
     path("clients/", views.clients, name="clients"),
     path("analytics/", views.analytics, name="analytics"),
     path("profile/", views.profile, name="profile"),
+    path("ops/", views.ops, name="ops"),
     path("broadcast/", views.broadcast, name="broadcast"),
     path("notifications/read/", views.notifications_read, name="notifications_read"),
 ]

@@ -1,0 +1,10 @@
+{% for m in messages_list %}
+<div class="flex {% if m.sender == request.user %}justify-end{% endif %}">
+  <div class="max-w-[75%]">
+    <div class="rounded-2xl px-4 py-2.5 text-sm {% if m.sender == request.user %}bg-navy-700 text-white{% else %}bg-beige-100 text-navy-700{% endif %}">{{ m.body|linebreaksbr }}</div>
+    <p class="mt-1 px-1 text-[11px] text-navy-300 {% if m.sender == request.user %}text-right{% endif %}">{{ m.created_at|date:"d M, H:i" }}</p>
+  </div>
+</div>
+{% empty %}
+<p class="py-8 text-center text-sm text-navy-400">No messages yet — say hello 👋</p>
+{% endfor %}
