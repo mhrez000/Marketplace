@@ -1,8 +1,18 @@
 # Lens — photographer/videographer marketplace + business platform (AU)
 
+[![CI](https://github.com/mhrez000/Marketplace/actions/workflows/ci.yml/badge.svg)](https://github.com/mhrez000/Marketplace/actions/workflows/ci.yml)
+[![Pages](https://github.com/mhrez000/Marketplace/actions/workflows/pages.yml/badge.svg)](https://mhrez000.github.io/Marketplace/)
+
 The first platform where an Australian client can discover, compare and book a vetted
 photographer/videographer — and where that creative runs the whole job (quote → contract
 → payment → shoot → gallery) in one place. Melbourne first.
+
+### 👀 Showcase
+- **Static preview (no setup):** https://mhrez000.github.io/Marketplace/ — browse the live
+  marketplace UI, profiles and SEO pages. Buttons that need a server are inactive.
+- **Full interactive demo (one click):** *Code → Create codespace on main* — boots the whole
+  app with seeded test accounts; the server starts automatically on port 8000.
+  Log in with any account below (password `lens12345`).
 
 > "Lens" is the working brand name (set `BRAND_NAME` in `.env` to rename everywhere).
 
