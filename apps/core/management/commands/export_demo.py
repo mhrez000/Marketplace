@@ -22,6 +22,25 @@ BANNER = (
     'Run the full interactive app from the repo &rarr;</a></div>'
 )
 
+# Static hosts reject POSTs with "405 Not Allowed" — intercept every form
+# submission (and disable HTMX polling) with a friendly explainer instead.
+PREVIEW_SCRIPT = """
+<script>
+document.addEventListener('submit', function (e) {
+  var m = (e.target.getAttribute('method') || 'get').toLowerCase();
+  if (m === 'post') {  // GET forms (search) still work on a static host
+    e.preventDefault();
+    alert('This is a static preview \\u2014 logging in, enquiries and payments need the real app.\\n\\nRun it in one click: github.com/mhrez000/Marketplace \\u2192 Code \\u2192 Create codespace.');
+  }
+}, true);
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[hx-get],[hx-post]').forEach(function (el) {
+    el.removeAttribute('hx-get'); el.removeAttribute('hx-post'); el.removeAttribute('hx-trigger');
+  });
+});
+</script>
+"""
+
 
 class Command(BaseCommand):
     help = "Export public pages as a static site for GitHub Pages."
@@ -79,4 +98,6 @@ class Command(BaseCommand):
         m = re.search(r"<body[^>]*>", html)
         if m:
             html = html[:m.end()] + "\n" + BANNER + html[m.end():]
+        # Intercept POST forms + kill HTMX polling (no server behind Pages).
+        html = html.replace("</body>", PREVIEW_SCRIPT + "</body>", 1)
         return html
