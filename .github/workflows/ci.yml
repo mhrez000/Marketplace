@@ -29,13 +29,24 @@ jobs:
         run: python manage.py test --settings=config.settings.test --verbosity=2
 
   deploy:
-    # Auto-deploy to Fly on push to the default branch (needs FLY_API_TOKEN secret).
+    # Auto-deploy to Fly on push to the default branch. Skips cleanly until a
+    # FLY_API_TOKEN repo secret is configured (secrets aren't readable in
+    # job-level `if`, so the check lives in a step).
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
+      - name: Check for Fly token
+        id: fly
+        run: echo "has=${{ secrets.FLY_API_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+      - name: No token — skipping deploy
+        if: steps.fly.outputs.has != 'true'
+        run: echo "FLY_API_TOKEN not set; build verified, deploy skipped."
       - uses: actions/checkout@v4
+        if: steps.fly.outputs.has == 'true'
       - uses: superfly/flyctl-actions/setup-flyctl@master
+        if: steps.fly.outputs.has == 'true'
       - run: flyctl deploy --remote-only
+        if: steps.fly.outputs.has == 'true'
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
