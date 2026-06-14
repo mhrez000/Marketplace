@@ -24,6 +24,7 @@ class Deliverable(TimeStampedModel):
         FINAL_DELIVERY = "final_delivery", "Final gallery delivery"
         FINAL_PAYMENT = "final_payment", "Final payment due"
         ARCHIVE = "archive", "Archive & cleanup"
+        CUSTOM = "custom", "Task"
 
     class Status(models.TextChoices):
         PENDING = "pending", "To do"
@@ -110,3 +111,21 @@ class Deliverable(TimeStampedModel):
         self.status = self.Status.PENDING
         self.completed_at = None
         self.save(update_fields=["status", "completed_at", "updated_at"])
+
+
+class DeliverableTemplate(TimeStampedModel):
+    """A creative's reusable checklist item. When a workspace has any of these,
+    new bookings are seeded from this list instead of the built-in milestones."""
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="task_templates")
+    label = models.CharField(max_length=160)
+    day_offset = models.IntegerField(default=7, help_text="Days after the shoot date it's due")
+    is_client_facing = models.BooleanField(default=False)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["sort_order", "day_offset", "id"]
+
+    def __str__(self):
+        return f"{self.label} (+{self.day_offset}d)"

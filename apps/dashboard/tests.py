@@ -64,3 +64,27 @@ class OpsDashboardTests(TestCase):
         self.client.force_login(self.normal)
         r = self.client.get("/app/ops/", SERVER_NAME="localhost")
         self.assertEqual(r.status_code, 404)
+
+
+class ChecklistAndDeliveriesTests(TestCase):
+    def setUp(self):
+        from apps.workspaces.models import Workspace
+        from apps.profiles.models import CreativeProfile
+        self.creative = User.objects.create_user(email="cr@t.com", password="x")
+        self.ws = Workspace.objects.create(owner=self.creative, business_name="S", is_published=True)
+        CreativeProfile.objects.create(workspace=self.ws, primary_category="events")
+
+    def test_checklist_add_and_delete(self):
+        self.client.force_login(self.creative)
+        self.client.post("/app/checklist/", {"action": "add", "label": "Backup", "day_offset": "1"},
+                         SERVER_NAME="localhost")
+        self.assertEqual(self.ws.task_templates.count(), 1)
+        t = self.ws.task_templates.first()
+        self.client.post("/app/checklist/", {"action": "delete", "id": t.pk}, SERVER_NAME="localhost")
+        self.assertEqual(self.ws.task_templates.count(), 0)
+
+    def test_deliveries_panel_partial(self):
+        self.client.force_login(self.creative)
+        r = self.client.get("/app/deliveries/?panel=1", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 200)
+        self.assertNotContains(r, "<html")  # fragment for HTMX swap

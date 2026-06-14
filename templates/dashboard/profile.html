@@ -57,6 +57,14 @@
       <div class="mt-2 flex justify-between text-sm"><span class="text-navy-600">{{ p.name }}</span><span class="font-semibold text-navy-700">${{ p.base_price|floatformat:0 }}</span></div>
       {% endfor %}{% empty %}<p class="mt-2 text-sm text-navy-400">No packages yet.</p>{% endfor %}
     </div>
+    <div class="card p-6">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg">Delivery checklist</h2>
+        <span class="pill-beige">{{ ws.task_templates.count }}</span>
+      </div>
+      <p class="mt-1 text-sm text-navy-400">Your reusable post-shoot task list, applied to new jobs.</p>
+      <a href="{% url 'dashboard:checklist' %}" class="btn-ghost mt-3 w-full">Manage checklist →</a>
+    </div>
   </div>
 </div>
 {% endblock %}

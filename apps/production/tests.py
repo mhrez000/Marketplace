@@ -60,6 +60,28 @@ class DeliveryTrackerTests(TestCase):
         # Immediately re-running raises nothing (20h throttle).
         self.assertEqual(generate_reminders(self.ws), 0)
 
+    def test_custom_template_drives_generation(self):
+        from apps.production.models import Deliverable, DeliverableTemplate
+        from apps.production.services import generate_deliverables
+        DeliverableTemplate.objects.create(workspace=self.ws, label="Cull in Lightroom", day_offset=3)
+        DeliverableTemplate.objects.create(workspace=self.ws, label="Colour grade", day_offset=6)
+        b = self._confirm(days_ahead=30)  # _on_confirmed already generated
+        kinds = set(b.deliverables.values_list("kind", flat=True))
+        titles = set(b.deliverables.values_list("title", flat=True))
+        self.assertEqual(kinds, {Deliverable.Kind.CUSTOM})           # only custom tasks
+        self.assertEqual(titles, {"Cull in Lightroom", "Colour grade"})
+
+    def test_apply_custom_tasks_to_existing_booking(self):
+        from apps.production.models import DeliverableTemplate
+        from apps.production.services import add_custom_tasks
+        b = self._confirm(days_ahead=30)  # built-in tasks (no template yet)
+        before = b.deliverables.count()
+        DeliverableTemplate.objects.create(workspace=self.ws, label="Send thank-you card", day_offset=10)
+        added = add_custom_tasks(b)
+        self.assertEqual(added, 1)
+        self.assertEqual(b.deliverables.count(), before + 1)
+        self.assertEqual(add_custom_tasks(b), 0)  # idempotent — no dupes
+
     def test_completed_booking_closes_checklist(self):
         b = self._confirm(days_ago=10)
         b.transition(b.Status.SHOOT_COMPLETED, force=True)

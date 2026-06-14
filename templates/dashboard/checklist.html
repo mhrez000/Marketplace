@@ -1,0 +1,51 @@
+{% extends "base_app.html" %}
+{% block title %}My delivery checklist — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<a href="{% url 'dashboard:profile' %}" class="text-sm text-teal-600 hover:underline">← Back to profile</a>
+
+<div class="mx-auto mt-3 max-w-2xl">
+  <h1 class="text-2xl font-600">My delivery checklist</h1>
+  <p class="mt-1 text-sm text-navy-500">Your reusable post-shoot task list. New bookings are seeded from this instead of the default milestones. "Days after shoot" sets each task's due date.</p>
+
+  <!-- Existing items -->
+  <div class="card mt-6 divide-y divide-navy-100/70">
+    {% for t in templates %}
+    <div class="flex items-center justify-between gap-3 p-4">
+      <div class="min-w-0">
+        <p class="font-medium text-navy-700">{{ t.label }}{% if t.is_client_facing %}<span class="ml-1 pill-sky !py-0 !px-1.5 text-[10px]">client</span>{% endif %}</p>
+        <p class="text-xs text-navy-400">Due {{ t.day_offset }} day{{ t.day_offset|pluralize }} after the shoot</p>
+      </div>
+      <form method="post">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ t.pk }}">
+        <button class="text-xs font-semibold text-red-500 hover:underline">Remove</button>
+      </form>
+    </div>
+    {% empty %}
+    <div class="p-8 text-center text-sm text-navy-400">
+      No custom tasks yet — new bookings use the built-in milestones until you add your own here.
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Add item -->
+  <form method="post" class="card mt-4 space-y-3 p-5">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="add">
+    <h2 class="text-lg">Add a task</h2>
+    <div>
+      <label class="label">Task</label>
+      <input name="label" class="input" placeholder="e.g. Colour grade in Lightroom" required>
+    </div>
+    <div class="flex flex-wrap items-end gap-3">
+      <div class="w-40">
+        <label class="label">Days after shoot</label>
+        <input name="day_offset" type="number" value="7" class="input">
+      </div>
+      <label class="flex items-center gap-2 pb-2.5 text-sm text-navy-600">
+        <input type="checkbox" name="is_client_facing" class="h-5 w-5 accent-teal-500"> Client-facing
+      </label>
+    </div>
+    <button class="btn-accent">Add task</button>
+  </form>
+</div>
+{% endblock %}

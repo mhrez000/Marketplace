@@ -274,25 +274,37 @@ def deliveries(request):
 
     if request.method == "POST":
         action = request.POST.get("action")
+        booking_q = request.POST.get("booking", "")
+        if action == "add_task":
+            b = get_object_or_404(Booking, pk=booking_q, workspace=ws)
+            title = request.POST.get("title", "").strip()
+            if title:
+                due = request.POST.get("due_date") or None
+                Deliverable.objects.create(
+                    booking=b, workspace=ws, kind=Deliverable.Kind.CUSTOM, title=title,
+                    due_date=due, sort_order=b.deliverables.count())
+                messages.success(request, f"Added “{title}”.")
+            return redirect(f"{reverse('dashboard:deliveries')}?booking={b.pk}")
+        if action == "apply_checklist":
+            b = get_object_or_404(Booking, pk=booking_q, workspace=ws)
+            n = prod.add_custom_tasks(b)
+            messages.success(request, f"Added {n} task(s) from your checklist." if n
+                             else "No new checklist tasks to add (or none defined yet).")
+            return redirect(f"{reverse('dashboard:deliveries')}?booking={b.pk}")
+
         d = get_object_or_404(Deliverable, pk=request.POST.get("deliverable"), workspace=ws)
+        back = f"{reverse('dashboard:deliveries')}?booking={d.booking_id}"
         if action == "done":
             d.mark_done()
-            messages.success(request, f"Marked “{d.title}” as done.")
         elif action == "reopen":
             d.reopen()
-        elif action == "snooze":
-            if d.due_date:
-                d.due_date += timezone.timedelta(days=7)
-                d.reminded_at = None
-                d.save(update_fields=["due_date", "reminded_at", "updated_at"])
-                messages.success(request, f"Pushed “{d.title}” back a week.")
-        elif action == "set_due":
-            new_due = request.POST.get("due_date")
-            if new_due:
-                d.due_date = new_due
-                d.reminded_at = None
-                d.save(update_fields=["due_date", "reminded_at", "updated_at"])
-        return redirect("dashboard:deliveries")
+        elif action == "delete":
+            d.delete()
+        elif action == "snooze" and d.due_date:
+            d.due_date += timezone.timedelta(days=7)
+            d.reminded_at = None
+            d.save(update_fields=["due_date", "reminded_at", "updated_at"])
+        return redirect(back)
 
     # Make sure existing bookings have a delivery plan, then raise reminders.
     prod.backfill_for_workspace(ws)
@@ -300,14 +312,13 @@ def deliveries(request):
 
     items = list(Deliverable.objects.filter(workspace=ws).select_related("booking", "booking__client"))
     active = [d for d in items if not d.is_done]
-    overdue = sorted([d for d in active if d.is_overdue], key=lambda d: d.due_date or timezone.now().date())
-    due_soon = sorted([d for d in active if not d.is_overdue and d.is_due_soon],
-                      key=lambda d: d.due_date or timezone.now().date())
-    upcoming = sorted([d for d in active if not d.is_overdue and not d.is_due_soon],
-                      key=lambda d: d.due_date or timezone.now().date())
-    done = [d for d in items if d.is_done]
+    overdue = [d for d in active if d.is_overdue]
+    due_soon = [d for d in active if not d.is_overdue and d.is_due_soon]
+    counts = {"overdue": len(overdue), "due_soon": len(due_soon),
+              "upcoming": len([d for d in active if not d.is_overdue and not d.is_due_soon]),
+              "done": len([d for d in items if d.is_done])}
 
-    # Per-booking timelines, sorted by nearest open due date.
+    # Per-booking groups (the left list + the right panel content).
     by_booking = {}
     for d in items:
         by_booking.setdefault(d.booking_id, {"booking": d.booking, "items": []})["items"].append(d)
@@ -318,16 +329,48 @@ def deliveries(request):
         grp["open_count"] = len(open_items)
         grp["overdue_count"] = len([x for x in open_items if x.is_overdue])
     groups = sorted(by_booking.values(),
-                    key=lambda g: (g["next_due"] is None, g["next_due"] or timezone.now().date()))
+                    key=lambda g: (g["overdue_count"] == 0, g["next_due"] is None,
+                                   g["next_due"] or timezone.now().date()))
 
-    flt = request.GET.get("filter", "attention")
-    return render(request, "dashboard/deliveries.html", {
-        "active": "deliveries", "ws": ws,
-        "overdue": overdue, "due_soon": due_soon, "upcoming": upcoming, "done": done,
-        "attention": overdue + due_soon, "groups": groups, "filter": flt,
-        "counts": {"overdue": len(overdue), "due_soon": len(due_soon),
-                   "upcoming": len(upcoming), "done": len(done)},
-    })
+    # Which booking's tasks to show on the right (default: most urgent).
+    selected_id = request.GET.get("booking")
+    selected = next((g for g in groups if str(g["booking"].pk) == selected_id), None)
+    if selected is None and groups:
+        selected = groups[0]
+
+    ctx = {"active": "deliveries", "ws": ws, "groups": groups, "selected": selected,
+           "counts": counts}
+    if request.GET.get("panel"):
+        return render(request, "dashboard/_deliverable_panel.html", ctx)
+    return render(request, "dashboard/deliveries.html", ctx)
+
+
+@login_required
+def checklist(request):
+    """Manage the workspace's reusable delivery checklist (applied to new jobs)."""
+    from apps.production.models import DeliverableTemplate
+    ws = _require_workspace(request)
+    if not ws:
+        return redirect("dashboard:onboarding")
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "add":
+            label = request.POST.get("label", "").strip()
+            if label:
+                try:
+                    offset = int(request.POST.get("day_offset") or 7)
+                except ValueError:
+                    offset = 7
+                DeliverableTemplate.objects.create(
+                    workspace=ws, label=label, day_offset=offset,
+                    is_client_facing="is_client_facing" in request.POST,
+                    sort_order=ws.task_templates.count())
+                messages.success(request, "Task added to your checklist.")
+        elif action == "delete":
+            ws.task_templates.filter(pk=request.POST.get("id")).delete()
+        return redirect("dashboard:checklist")
+    return render(request, "dashboard/checklist.html", {
+        "active": "profile", "ws": ws, "templates": ws.task_templates.all()})
 
 
 @login_required

@@ -78,21 +78,33 @@ def _category_for(booking):
     return profile.primary_category if profile else "events"
 
 
+def _rows_for(booking):
+    """The (kind, offset, title, client_facing, remind) rows to seed a booking.
+
+    Uses the workspace's own checklist template if it has one; otherwise the
+    built-in milestones for the booking's category."""
+    templates = list(booking.workspace.task_templates.all())
+    if templates:
+        return [(Deliverable.Kind.CUSTOM, t.day_offset, t.label, t.is_client_facing, 2)
+                for t in templates]
+    return MILESTONE_TEMPLATES.get(_category_for(booking), MILESTONE_TEMPLATES["events"])
+
+
 def generate_deliverables(booking, *, force=False):
-    """Create the milestone set for a booking from its event-type template.
-    Idempotent unless force=True. No-op without an event date."""
+    """Create the task set for a booking from the workspace's checklist (or the
+    built-in milestones). Idempotent unless force=True. No-op without a date."""
     if not booking.event_date:
         return []
     if booking.deliverables.exists() and not force:
         return list(booking.deliverables.all())
 
-    template = MILESTONE_TEMPLATES.get(_category_for(booking), MILESTONE_TEMPLATES["events"])
     created = []
-    for order, (kind, offset, title, client_facing, remind) in enumerate(template):
+    for order, (kind, offset, title, client_facing, remind) in enumerate(_rows_for(booking)):
+        # Custom rows can repeat the CUSTOM kind, so match on (kind, title).
         d, _ = Deliverable.objects.get_or_create(
-            booking=booking, kind=kind,
+            booking=booking, kind=kind, title=title,
             defaults=dict(
-                workspace=booking.workspace, title=title,
+                workspace=booking.workspace,
                 due_date=booking.event_date + timedelta(days=offset),
                 is_client_facing=client_facing, reminder_days_before=remind,
                 sort_order=order,
@@ -102,6 +114,28 @@ def generate_deliverables(booking, *, force=False):
 
     _sync_calendar(booking)
     return created
+
+
+def add_custom_tasks(booking):
+    """Append the workspace's checklist items to an EXISTING booking (skipping
+    any already present by title). Used by the 'Apply my checklist' action."""
+    templates = list(booking.workspace.task_templates.all())
+    if not templates:
+        return 0
+    existing = set(booking.deliverables.values_list("title", flat=True))
+    base = booking.event_date or timezone.now().date()
+    added = 0
+    start = booking.deliverables.count()
+    for i, t in enumerate(templates):
+        if t.label in existing:
+            continue
+        Deliverable.objects.create(
+            booking=booking, workspace=booking.workspace, kind=Deliverable.Kind.CUSTOM,
+            title=t.label, due_date=base + timedelta(days=t.day_offset),
+            is_client_facing=t.is_client_facing, reminder_days_before=2,
+            sort_order=start + i)
+        added += 1
+    return added
 
 
 def _sync_calendar(booking):

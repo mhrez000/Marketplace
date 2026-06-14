@@ -13,6 +13,7 @@ urlpatterns = [
     path("bookings/<uuid:pk>/", views.booking_detail, name="booking_detail"),
     path("calendar/", views.calendar, name="calendar"),
     path("deliveries/", views.deliveries, name="deliveries"),
+    path("checklist/", views.checklist, name="checklist"),
     path("clients/", views.clients, name="clients"),
     path("analytics/", views.analytics, name="analytics"),
     path("profile/", views.profile, name="profile"),
