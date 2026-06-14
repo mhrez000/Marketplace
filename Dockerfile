@@ -25,7 +25,16 @@ RUN SECRET_KEY=build-time-only python manage.py collectstatic --noinput
 
 EXPOSE 8080
 
-# Migrations run as the Fly release_command (see fly.toml); this just serves.
-CMD ["gunicorn", "config.wsgi:application", \
-     "--bind", "0.0.0.0:8080", "--workers", "3", "--timeout", "60", \
-     "--access-logfile", "-", "--error-logfile", "-"]
+# Startup script (written with LF here so Windows checkouts can't break it):
+# migrate against the mounted volume, seed once if the DB is empty, then serve.
+RUN printf '%s\n' \
+    '#!/bin/sh' \
+    'set -e' \
+    'python manage.py migrate --noinput' \
+    'if [ "$(python manage.py shell -c "from django.contrib.auth import get_user_model as g; print(g().objects.exists())")" != "True" ]; then' \
+    '  echo "Empty database — seeding demo data..."; python manage.py seed_demo || true' \
+    'fi' \
+    'exec gunicorn config.wsgi:application --bind 0.0.0.0:8080 --workers 2 --timeout 60 --access-logfile - --error-logfile -' \
+    > /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+
+CMD ["/app/entrypoint.sh"]

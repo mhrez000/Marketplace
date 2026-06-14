@@ -7,8 +7,10 @@ console_command = '/app/manage.py shell'
 
 [build]
 
-[deploy]
-  release_command = 'python manage.py migrate --noinput'
+# SQLite lives on a persistent volume mounted here (demo DB, no separate server).
+[mounts]
+  source = 'lens_data'
+  destination = '/data'
 
 [env]
   DJANGO_SETTINGS_MODULE = 'config.settings.prod'

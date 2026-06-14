@@ -113,6 +113,11 @@ DATABASES = {
     )
 }
 
+# When running on SQLite (incl. the Fly volume demo), give writers a grace
+# period instead of failing instantly with "database is locked".
+if DATABASES["default"]["ENGINE"].endswith("sqlite3"):
+    DATABASES["default"].setdefault("OPTIONS", {})["timeout"] = 20
+
 # Geo search: use PostGIS ST_DWithin when on a PostGIS-enabled Postgres DB,
 # else fall back to an in-Python Haversine (apps/marketplace/geo.py). Set to
 # True only when DATABASE_URL points at Postgres with the postgis extension.
