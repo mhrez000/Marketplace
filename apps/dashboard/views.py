@@ -72,6 +72,7 @@ def overview(request):
         "active": "overview", "ws": ws, "stats": stats, "leads": leads,
         "upcoming": upcoming, "bookings_count": bookings.count(),
         "profile_pct": prof["pct"], "prof_listable": prof["listable"],
+        "prof_items": prof["items"], "prof_remaining": len(prof["missing"]),
         "stale_leads": stale_leads, "avg_response": avg_resp,
         "review_count": review_agg["n"], "avg_review": review_agg["avg"],
         "pending_reviews": pending_reviews,
