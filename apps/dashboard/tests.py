@@ -88,3 +88,17 @@ class ChecklistAndDeliveriesTests(TestCase):
         r = self.client.get("/app/deliveries/?panel=1", SERVER_NAME="localhost")
         self.assertEqual(r.status_code, 200)
         self.assertNotContains(r, "<html")  # fragment for HTMX swap
+
+    def test_calendar_events_feed_is_json(self):
+        self.client.force_login(self.creative)
+        r = self.client.get("/app/calendar/events/", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r["content-type"], "application/json")
+        import json
+        self.assertIsInstance(json.loads(r.content), list)
+
+    def test_calendar_page_loads_fullcalendar(self):
+        self.client.force_login(self.creative)
+        r = self.client.get("/app/calendar/", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "multiMonthYear")  # year/month/week/day views wired
