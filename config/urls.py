@@ -17,6 +17,7 @@ urlpatterns = [
     path("app/", include("apps.dashboard.urls")),
     path("portal/", include("apps.portal.urls")),
     path("messages/", include("apps.messaging.urls")),
+    path("api/v1/", include("apps.api.urls")),
     path("api/v1/webhooks/stripe/", stripe_webhook, name="stripe_webhook"),
     path("sitemap.xml", sitemap, {"sitemaps": SITEMAPS}, name="sitemap"),
     path("robots.txt", robots_txt, name="robots"),
