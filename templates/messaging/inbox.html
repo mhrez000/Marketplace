@@ -1,8 +1,8 @@
-{% extends "base_public.html" %}
+{% extends base_template|default:"base_public.html" %}
 {% block title %}Messages — {{ BRAND_NAME }}{% endblock %}
 
 {% block main %}
-<section class="container-content py-10">
+<section class="{% if base_template == 'base_app.html' %}max-w-3xl{% else %}container-content py-10{% endif %}">
   <h1 class="text-2xl font-600">Messages</h1>
   <p class="mt-1 text-sm text-navy-500">All your conversations in one place.</p>
 

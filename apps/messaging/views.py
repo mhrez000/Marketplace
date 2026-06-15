@@ -5,12 +5,21 @@ from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
+from apps.core.selectors import get_active_workspace
+
 from .models import Message, Thread
+
+
+def _shell(user):
+    """Creatives see Messages inside the dashboard chrome; clients see the public site."""
+    ws = get_active_workspace(user)
+    return ws, ("base_app.html" if ws else "base_public.html")
 
 
 @login_required
 def inbox(request):
     user = request.user
+    ws, base_template = _shell(user)
     threads = (Thread.objects.filter(Q(client=user) | Q(workspace__owner=user))
                .select_related("workspace", "workspace__owner", "client", "booking")
                .prefetch_related("messages"))
@@ -22,7 +31,8 @@ def inbox(request):
         items.append({"thread": t, "last": last, "unread": t.unread_for(user),
                       "other": t.other_label(user)})
     items.sort(key=lambda i: i["last"].created_at, reverse=True)
-    return render(request, "messaging/inbox.html", {"items": items})
+    return render(request, "messaging/inbox.html", {
+        "items": items, "ws": ws, "active": "messages", "base_template": base_template})
 
 
 @login_required
@@ -42,11 +52,13 @@ def thread_detail(request, pk):
         return redirect("messaging:thread", pk=thread.pk)
 
     thread.mark_read_for(request.user)
+    ws, base_template = _shell(request.user)
     return render(request, "messaging/thread.html", {
         "thread": thread,
         "messages_list": thread.messages.select_related("sender"),
         "other": thread.other_label(request.user),
         "is_creative": request.user.id == thread.workspace.owner_id,
+        "ws": ws, "active": "messages", "base_template": base_template,
     })
 
 

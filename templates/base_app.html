@@ -16,7 +16,7 @@
       <a href="{% url 'dashboard:bookings' %}" class="{% if a == 'bookings' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='calendar' %}Bookings</a>
       <a href="{% url 'dashboard:deliveries' %}" class="{% if a == 'deliveries' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='check' %}Deliveries</a>
       <a href="{% url 'dashboard:calendar' %}" class="{% if a == 'calendar' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='calendar' %}Calendar</a>
-      <a href="{% url 'messaging:inbox' %}" class="nav-link">{% include "dashboard/_navicon.html" with name='inbox' %}Messages{% if nav_unread_messages %}<span class="ml-auto inline-grid h-5 min-w-5 place-items-center rounded-full bg-teal-500 px-1.5 text-[11px] font-bold text-white">{{ nav_unread_messages }}</span>{% endif %}</a>
+      <a href="{% url 'messaging:inbox' %}" class="{% if a == 'messages' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='inbox' %}Messages{% if nav_unread_messages %}<span class="ml-auto inline-grid h-5 min-w-5 place-items-center rounded-full bg-teal-500 px-1.5 text-[11px] font-bold text-white">{{ nav_unread_messages }}</span>{% endif %}</a>
       <a href="{% url 'dashboard:clients' %}" class="{% if a == 'clients' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='users' %}Clients</a>
       <a href="{% url 'dashboard:analytics' %}" class="{% if a == 'analytics' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='chart' %}Analytics</a>
       <div class="my-2 border-t border-navy-100/70"></div>
