@@ -84,7 +84,7 @@
       <div class="card p-5"><p class="font-semibold text-navy-700">Are these creatives verified?</p><p class="mt-1 text-sm text-navy-500">Every creative is checked for ABN, insurance and (where relevant) a WWCC, with reviews tied to real completed bookings.</p></div>
     </div>
     <div class="mt-6 flex gap-3">
-      <a href="{% url 'marketplace:search' %}?q={{ svc.noun }}&location={{ sub.name }}" class="btn-primary">Search {{ sub.name }}</a>
+      <a href="{% url 'marketplace:search' %}?q={{ svc.noun|urlencode }}&location={{ sub.name|urlencode }}" class="btn-primary">Search {{ sub.name }}</a>
       <a href="{% url 'marketplace:browse' %}" class="btn-ghost">Browse all areas</a>
     </div>
   </div>

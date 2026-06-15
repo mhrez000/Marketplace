@@ -27,7 +27,7 @@
   <!-- Filter chips -->
   <div class="mt-5 flex flex-wrap gap-2">
     {% for c in categories %}
-      <a href="?q={{ c.name }}" class="pill ring-1 ring-navy-100 {% if query == c.name %}bg-navy-700 text-white{% else %}bg-white text-navy-600 hover:bg-beige-100{% endif %}">{{ c.name }}</a>
+      <a href="?q={{ c.name|urlencode }}{% if location %}&location={{ location|urlencode }}{% endif %}{% if date %}&date={{ date|urlencode }}{% endif %}" class="pill ring-1 ring-navy-100 {% if query == c.name %}bg-navy-700 text-white{% else %}bg-white text-navy-600 hover:bg-beige-100{% endif %}">{{ c.name }}</a>
     {% endfor %}
   </div>
 

@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.bookings import services as flow
@@ -266,7 +267,6 @@ def calendar(request):
 def calendar_events(request):
     """JSON feed for FullCalendar: shoots, due dates and blocked days."""
     from django.http import JsonResponse
-    from django.urls import reverse
     ws = _require_workspace(request)
     if not ws:
         return JsonResponse([], safe=False)

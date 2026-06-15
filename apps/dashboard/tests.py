@@ -89,6 +89,30 @@ class ChecklistAndDeliveriesTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertNotContains(r, "<html")  # fragment for HTMX swap
 
+    def test_deliveries_post_redirects(self):
+        """Regression: every deliveries action builds its redirect with reverse();
+        a missing import made every POST 500 with NameError."""
+        from apps.contracts.models import ContractTemplate
+        ContractTemplate.objects.create(name="Std", contract_type="events", body=flow.DEFAULT_CONTRACT)
+        svc = Service.objects.create(workspace=self.ws, category="events", title="E")
+        pkg = Package.objects.create(service=svc, name="P", base_price=Decimal("1000"))
+        client_user = User.objects.create_user(email="cl2@t.com", password="pw")
+        e = flow.create_enquiry(client=client_user, workspace=self.ws, event_type="events", message="hi")
+        q = flow.send_quote(enquiry=e, title="Q", package=pkg, line_items=[{"label": "x", "amount": 1000}])
+        booking = flow.accept_quote(q)
+
+        self.client.force_login(self.creative)
+        # add_task and apply_checklist both go through reverse() to redirect
+        r = self.client.post("/app/deliveries/",
+                             {"action": "add_task", "booking": str(booking.pk), "title": "Cull RAWs"},
+                             SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(booking.deliverables.filter(title="Cull RAWs").count(), 1)
+        r2 = self.client.post("/app/deliveries/",
+                              {"action": "apply_checklist", "booking": str(booking.pk)},
+                              SERVER_NAME="localhost")
+        self.assertEqual(r2.status_code, 302)
+
     def test_calendar_events_feed_is_json(self):
         self.client.force_login(self.creative)
         r = self.client.get("/app/calendar/events/", SERVER_NAME="localhost")

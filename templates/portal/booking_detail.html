@@ -16,7 +16,7 @@
   <div class="mt-6 grid gap-6 lg:grid-cols-3">
     <div class="space-y-6 lg:col-span-2">
       <!-- Action banner -->
-      {% if booking.status == S.QUOTE_ACCEPTED and contract and not contract.signed_by_client_at %}
+      {% if booking.status == S.CONTRACT_SENT and contract and not contract.signed_by_client_at %}
       <div class="card border-l-4 border-teal-500 p-6">
         <h2 class="text-lg">Next step: sign your contract</h2>
         <pre class="mt-3 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-xl bg-beige-100 p-4 font-sans text-xs text-navy-600">{{ contract.body }}</pre>
