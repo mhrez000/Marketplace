@@ -3,6 +3,7 @@
 
 {% block extra_head %}
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales/en-au.global.min.js"></script>
 <style>
   /* Brand the calendar lightly */
   .fc { --fc-border-color:#e1e7ed; --fc-today-bg-color:#eef4f8; font-size:14px; }
@@ -59,6 +60,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var detail = document.getElementById('event-detail');
   var cal = new FullCalendar.Calendar(document.getElementById('calendar'), {
     initialView: 'dayGridMonth',
+    locale: 'en-au',
     height: 'auto',
     firstDay: 1,
     headerToolbar: {
