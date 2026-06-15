@@ -24,13 +24,15 @@
   {# Twitter/X falls back to the og:* tags above when these are absent, so we only set the card type. #}
   <meta name="twitter:card" content="summary_large_image">
 
+  {# Fonts as an early, parallel stylesheet (not a render-blocking CSS @import). #}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
 
-  <!-- HTMX + Alpine: rich interactivity without an SPA (build plan §2.1) -->
-  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
-  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <!-- HTMX + Alpine: self-hosted (cached + no third-party CDN dependency) -->
+  <script src="{% static 'js/htmx.min.js' %}" defer></script>
+  <script src="{% static 'js/alpine.min.js' %}" defer></script>
   {% block extra_head %}{% endblock %}
 </head>
 <body class="h-full min-h-full">

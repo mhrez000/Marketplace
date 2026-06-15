@@ -3,7 +3,7 @@
   <div class="relative aspect-[4/3] overflow-hidden bg-gradient-to-br
     {% if p.accent == 'navy' %}from-navy-600 to-navy-800{% elif p.accent == 'teal' %}from-teal-400 to-teal-600{% else %}from-sky-300 to-teal-400{% endif %}">
     {% if p.cover_image %}
-      <img src="{{ p.cover_image.url }}" alt="{{ p.workspace.business_name }}" class="h-full w-full object-cover">
+      <img src="{{ p.cover_image.url }}" alt="{{ p.workspace.business_name }}" loading="lazy" decoding="async" class="h-full w-full object-cover">
     {% else %}
       <div class="absolute inset-0 opacity-20" style="background-image:radial-gradient(circle at 30% 30%, white 1px, transparent 1px);background-size:18px 18px;"></div>
     {% endif %}

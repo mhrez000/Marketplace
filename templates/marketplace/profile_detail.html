@@ -27,7 +27,7 @@
 {% block main %}
 <!-- Cover -->
 <section class="relative h-56 overflow-hidden bg-gradient-to-br {% if profile.accent == 'navy' %}from-navy-600 to-navy-800{% elif profile.accent == 'teal' %}from-teal-400 to-teal-600{% else %}from-sky-300 to-teal-500{% endif %} sm:h-72">
-  {% if profile.cover_image %}<img src="{{ profile.cover_image.url }}" class="h-full w-full object-cover" alt="{{ workspace.business_name }} — {{ profile.get_primary_category_display }} portfolio">{% else %}
+  {% if profile.cover_image %}<img src="{{ profile.cover_image.url }}" class="h-full w-full object-cover" fetchpriority="high" decoding="async" alt="{{ workspace.business_name }} — {{ profile.get_primary_category_display }} portfolio">{% else %}
   <div class="absolute inset-0 opacity-20" style="background-image:radial-gradient(circle at 25% 30%, white 1px, transparent 1px);background-size:22px 22px;"></div>{% endif %}
 </section>
 
