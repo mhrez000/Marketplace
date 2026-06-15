@@ -10,6 +10,15 @@ def get_active_workspace(user):
     return user.owned_workspaces.first()
 
 
+def dashboard_shell(user):
+    """Pick the base layout for pages shared by creatives and clients (Messages,
+    Settings): creatives get the dashboard chrome, clients the public site.
+
+    Returns (workspace_or_None, base_template_name)."""
+    ws = get_active_workspace(user)
+    return ws, ("base_app.html" if ws else "base_public.html")
+
+
 def annotate_ratings(profile_qs):
     """Annotate a CreativeProfile queryset with avg rating + review count."""
     return profile_qs.annotate(

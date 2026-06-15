@@ -1,8 +1,8 @@
-{% extends "base_public.html" %}
+{% extends base_template|default:"base_public.html" %}
 {% block title %}Notification settings — {{ BRAND_NAME }}{% endblock %}
 
 {% block main %}
-<section class="container-content flex justify-center py-12">
+<section class="{% if base_template == 'base_app.html' %}flex{% else %}container-content flex justify-center py-12{% endif %}">
   <div class="w-full max-w-xl">
     <h1 class="text-2xl font-600">Notification settings</h1>
     <p class="mt-1 text-sm text-navy-500">Choose what reaches your inbox and phone.</p>
