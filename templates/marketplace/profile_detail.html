@@ -1,11 +1,33 @@
 {% extends "base_public.html" %}
-{% block title %}{{ workspace.business_name }} — {{ BRAND_NAME }}{% endblock %}
-{% block meta_description %}{{ profile.headline }} · {{ profile.location_label }}. Book {{ workspace.business_name }} on {{ BRAND_NAME }}.{% endblock %}
+{% load static %}
+{% block title %}{{ workspace.business_name }} — {{ profile.get_primary_category_display }} in {{ profile.location_label }} | {{ BRAND_NAME }}{% endblock %}
+{% block meta_description %}{{ profile.headline }} · {{ profile.location_label }}. {% if review_count %}Rated {{ avg_rating|floatformat:1 }} from {{ review_count }} review{{ review_count|pluralize }}. {% endif %}Compare packages and book {{ workspace.business_name }} on {{ BRAND_NAME }}.{% endblock %}
+{% block og_title %}{{ workspace.business_name }} — {{ profile.get_primary_category_display }} in {{ profile.location_label }}{% endblock %}
+{% block og_description %}{{ profile.headline }}. Compare packages, see reviews and check availability on {{ BRAND_NAME }}.{% endblock %}
+{% block og_image %}{% if profile.cover_image %}{{ SITE_URL }}{{ profile.cover_image.url }}{% else %}{{ SITE_URL }}{% static 'img/og-default.png' %}{% endif %}{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@type":"ProfessionalService",
+  "name":"{{ workspace.business_name|escapejs }}",
+  "url":"{{ SITE_URL }}{% url 'marketplace:profile' workspace.slug %}",
+  "image":"{% if profile.cover_image %}{{ SITE_URL }}{{ profile.cover_image.url }}{% else %}{{ SITE_URL }}{% static 'img/og-default.png' %}{% endif %}",
+  "description":"{{ profile.headline|escapejs }}",
+  "areaServed":"{{ profile.location_label|escapejs }}",
+  "address":{"@type":"PostalAddress","addressLocality":"{{ profile.suburb|escapejs }}","addressRegion":"VIC","addressCountry":"AU"}
+  {% if profile.starting_price %},"priceRange":"From ${{ profile.starting_price }}"{% endif %}
+  {% if review_count %},"aggregateRating":{"@type":"AggregateRating","ratingValue":"{{ avg_rating|floatformat:1 }}","reviewCount":"{{ review_count }}","bestRating":"5"}{% endif %}
+  {% if reviews %},"review":[{% for r in reviews %}{"@type":"Review","author":{"@type":"Person","name":"{{ r.client.get_full_name|default:'Verified client'|escapejs }}"},"reviewRating":{"@type":"Rating","ratingValue":"{{ r.rating }}","bestRating":"5"}{% if r.body %},"reviewBody":"{{ r.body|escapejs }}"{% endif %},"datePublished":"{{ r.created_at|date:'Y-m-d' }}"}{% if not forloop.last %},{% endif %}{% endfor %}]{% endif %}
+}
+</script>
+{% endblock %}
 
 {% block main %}
 <!-- Cover -->
 <section class="relative h-56 overflow-hidden bg-gradient-to-br {% if profile.accent == 'navy' %}from-navy-600 to-navy-800{% elif profile.accent == 'teal' %}from-teal-400 to-teal-600{% else %}from-sky-300 to-teal-500{% endif %} sm:h-72">
-  {% if profile.cover_image %}<img src="{{ profile.cover_image.url }}" class="h-full w-full object-cover" alt="">{% else %}
+  {% if profile.cover_image %}<img src="{{ profile.cover_image.url }}" class="h-full w-full object-cover" alt="{{ workspace.business_name }} — {{ profile.get_primary_category_display }} portfolio">{% else %}
   <div class="absolute inset-0 opacity-20" style="background-image:radial-gradient(circle at 25% 30%, white 1px, transparent 1px);background-size:22px 22px;"></div>{% endif %}
 </section>
 

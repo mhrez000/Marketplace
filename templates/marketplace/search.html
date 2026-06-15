@@ -1,6 +1,9 @@
 {% extends "base_public.html" %}
 
-{% block title %}Search creatives — {{ BRAND_NAME }}{% endblock %}
+{% block title %}{% if query %}{{ query }} — {% endif %}Search creatives{% if location %} in {{ location }}{% endif %} — {{ BRAND_NAME }}{% endblock %}
+{% block meta_description %}Search and compare verified Melbourne photographers and videographers on {{ BRAND_NAME }} — filter by style, suburb and date, with transparent packages and real reviews.{% endblock %}
+{# Filtered result permutations shouldn't be indexed; canonical (base.html) points at the bare /search/. #}
+{% block robots %}{% if query or location or date %}<meta name="robots" content="noindex,follow">{% endif %}{% endblock %}
 
 {% block main %}
 <section class="container-content py-8">

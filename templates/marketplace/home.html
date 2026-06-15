@@ -2,6 +2,36 @@
 {% load static %}
 
 {% block title %}{{ BRAND_NAME }} — Find & book Melbourne photographers & videographers{% endblock %}
+{% block meta_description %}Find, compare and book verified photographers and videographers across Melbourne — weddings, real estate, brand, events and family. Transparent packages, real reviews, protected payments. No per-lead fees.{% endblock %}
+{% block og_title %}{{ BRAND_NAME }} — book Melbourne photographers & videographers{% endblock %}
+{% block og_description %}Compare verified Melbourne creatives, see transparent packages and real reviews, and book with protected payments.{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "{{ BRAND_NAME }}",
+  "url": "{{ SITE_URL }}/",
+  "logo": "{{ SITE_URL }}{% static 'img/og-default.png' %}",
+  "areaServed": {"@type": "City", "name": "Melbourne"},
+  "description": "{{ BRAND_TAGLINE }}"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "{{ BRAND_NAME }}",
+  "url": "{{ SITE_URL }}/",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "{{ SITE_URL }}/search/?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+{% endblock %}
 
 {% block main %}
 

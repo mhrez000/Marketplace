@@ -3,6 +3,8 @@
 
 {% block title %}{{ svc.label }} in {{ sub.name }}, Melbourne | {{ BRAND_NAME }}{% endblock %}
 {% block meta_description %}Compare & book {% if count %}{{ count }} {% endif %}verified {{ svc.noun }}s in {{ sub.name }}, VIC. Real portfolios, transparent packages, live availability and protected payments.{% endblock %}
+{% block og_title %}{{ svc.label }} in {{ sub.name }}, Melbourne{% endblock %}
+{% block og_description %}Compare verified {{ svc.noun }}s in {{ sub.name }} on {{ BRAND_NAME }} — transparent packages, real reviews and protected payments.{% endblock %}
 
 {% block extra_head %}
 <script type="application/ld+json">

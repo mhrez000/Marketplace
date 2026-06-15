@@ -1,8 +1,13 @@
+import json
+import re
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
+from apps.bookings.models import Booking
 from apps.marketplace.models import Favourite
 from apps.profiles.models import CreativeProfile
+from apps.reviews.models import Review
 from apps.workspaces.models import Workspace
 
 User = get_user_model()
@@ -42,6 +47,58 @@ class StaticPageTests(TestCase):
         from django.urls import reverse
         for name in ["marketplace:privacy", "marketplace:terms", "marketplace:help"]:
             self.assertTrue(reverse(name))
+
+
+class SeoTests(TestCase):
+    def setUp(self):
+        self.creative = User.objects.create_user(email="cr@t.com", password="x")
+        self.client_user = User.objects.create_user(email="cl@t.com", password="pw")
+        self.ws = Workspace.objects.create(owner=self.creative, business_name="Aperture Co", is_published=True)
+        self.profile = CreativeProfile.objects.create(
+            workspace=self.ws, primary_category="weddings", headline="Editorial wedding photography",
+            suburb="Carlton", city="Melbourne", starting_price=2400)
+        b = Booking.objects.create(client=self.client_user, workspace=self.ws)
+        # An adversarial body (quotes + symbols) must not break the JSON-LD.
+        Review.objects.create(booking=b, client=self.client_user, workspace=self.ws,
+                              rating=5, title="Amazing", body='Best day ever — "quotes" & symbols')
+
+    def _jsonld(self, html):
+        return re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, re.S)
+
+    def test_home_has_canonical_og_and_schema(self):
+        html = self.client.get("/", SERVER_NAME="localhost").content.decode()
+        self.assertIn('<link rel="canonical"', html)
+        self.assertIn('property="og:title"', html)
+        self.assertIn('property="og:image"', html)
+        self.assertIn('name="twitter:card"', html)
+        types = {json.loads(b)["@type"] for b in self._jsonld(html)}
+        self.assertIn("Organization", types)
+        self.assertIn("WebSite", types)
+
+    def test_profile_jsonld_valid_with_rating(self):
+        r = self.client.get(f"/p/{self.ws.slug}/", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 200)
+        blocks = self._jsonld(r.content.decode())
+        self.assertTrue(blocks)
+        data = json.loads(blocks[0])  # must parse despite quotes/symbols in the review body
+        self.assertEqual(data["@type"], "ProfessionalService")
+        self.assertEqual(data["aggregateRating"]["reviewCount"], "1")
+        self.assertEqual(len(data["review"]), 1)
+
+    def test_every_public_page_has_canonical(self):
+        from django.urls import reverse
+        for name in ["marketplace:home", "marketplace:search", "marketplace:pricing",
+                     "marketplace:how_it_works", "marketplace:for_creatives",
+                     "marketplace:browse", "marketplace:privacy", "marketplace:terms",
+                     "marketplace:help"]:
+            html = self.client.get(reverse(name), SERVER_NAME="localhost").content.decode()
+            self.assertIn('<link rel="canonical"', html, name)
+
+    def test_filtered_search_is_noindex_but_bare_is_not(self):
+        bare = self.client.get("/search/", SERVER_NAME="localhost").content.decode()
+        self.assertNotIn("noindex", bare)
+        filtered = self.client.get("/search/?q=Weddings", SERVER_NAME="localhost").content.decode()
+        self.assertIn("noindex", filtered)
 
 
 class SeoGeoTests(TestCase):

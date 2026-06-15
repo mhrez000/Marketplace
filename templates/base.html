@@ -4,8 +4,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2F4156">
   <title>{% block title %}{{ BRAND_NAME }}{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}{{ BRAND_TAGLINE }}{% endblock %}">
+
+  <link rel="canonical" href="{% block canonical %}{{ SITE_URL }}{{ request.path }}{% endblock %}">
+  {% block robots %}{% endblock %}
+
+  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+
+  {# Open Graph / Twitter — pages override og_title/og_description/og_image where it pays off. #}
+  <meta property="og:site_name" content="{{ BRAND_NAME }}">
+  <meta property="og:locale" content="en_AU">
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+  <meta property="og:url" content="{% block og_url %}{{ SITE_URL }}{{ request.path }}{% endblock %}">
+  <meta property="og:title" content="{% block og_title %}{{ BRAND_NAME }} — book Melbourne photographers & videographers{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}{{ BRAND_TAGLINE }}{% endblock %}">
+  <meta property="og:image" content="{% block og_image %}{{ SITE_URL }}{% static 'img/og-default.png' %}{% endblock %}">
+  {# Twitter/X falls back to the og:* tags above when these are absent, so we only set the card type. #}
+  <meta name="twitter:card" content="summary_large_image">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
