@@ -254,3 +254,19 @@ def pricing(request):
 
 def for_creatives(request):
     return render(request, "marketplace/for_creatives.html")
+
+
+# Legal & support pages ------------------------------------------------------
+LEGAL_EFFECTIVE = "15 June 2026"
+
+
+def privacy(request):
+    return render(request, "marketplace/privacy.html", {"effective": LEGAL_EFFECTIVE})
+
+
+def terms(request):
+    return render(request, "marketplace/terms.html", {"effective": LEGAL_EFFECTIVE})
+
+
+def help_center(request):
+    return render(request, "marketplace/help.html")

@@ -29,6 +29,21 @@ class FavouriteTests(TestCase):
         self.assertFalse(Favourite.objects.exists())
 
 
+class StaticPageTests(TestCase):
+    def test_legal_and_support_pages_render(self):
+        for path, needle in [("/privacy/", "Privacy Policy"),
+                             ("/terms/", "Terms of Service"),
+                             ("/help/", "Help")]:
+            r = self.client.get(path, SERVER_NAME="localhost")
+            self.assertEqual(r.status_code, 200, path)
+            self.assertContains(r, needle)
+
+    def test_footer_links_resolve(self):
+        from django.urls import reverse
+        for name in ["marketplace:privacy", "marketplace:terms", "marketplace:help"]:
+            self.assertTrue(reverse(name))
+
+
 class SeoGeoTests(TestCase):
     def setUp(self):
         from decimal import Decimal

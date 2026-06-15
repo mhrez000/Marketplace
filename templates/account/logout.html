@@ -1,0 +1,17 @@
+{% extends "base_public.html" %}
+{% block title %}Sign out — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<section class="container-content flex justify-center py-16">
+  <div class="auth-card card w-full max-w-md p-8 text-center">
+    <h1 class="text-2xl">Sign out</h1>
+    <p class="mt-2 text-sm text-navy-500">Are you sure you want to sign out of {{ BRAND_NAME }}?</p>
+    <form method="post" action="{% url 'account_logout' %}" class="mt-6">
+      {% csrf_token %}
+      {% if redirect_field_value %}<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">{% endif %}
+      <button type="submit" class="btn-primary w-full">Sign out</button>
+    </form>
+    <a href="{% url 'marketplace:home' %}" class="mt-4 inline-block text-sm font-semibold text-teal-600 hover:underline">Cancel</a>
+  </div>
+</section>
+{% endblock %}

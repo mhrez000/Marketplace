@@ -1,0 +1,99 @@
+{% extends "base_public.html" %}
+{% block title %}Terms of Service — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<section class="container-content py-16">
+  <div class="mx-auto max-w-3xl">
+    <p class="eyebrow">Legal</p>
+    <h1 class="mt-2 text-4xl font-600">Terms of Service</h1>
+    <p class="mt-3 text-sm text-navy-400">Effective {{ effective }}</p>
+
+    <div class="card mt-8 space-y-8 p-8 text-sm leading-relaxed text-navy-600">
+      <p>These terms govern your use of {{ BRAND_NAME }} (the "platform"). By creating an
+        account or using the platform you agree to them. {{ BRAND_NAME }} is operated from
+        Melbourne, Australia.</p>
+
+      <div>
+        <h2 class="text-lg font-600 text-navy-700">1. What {{ BRAND_NAME }} is</h2>
+        <p class="mt-3">We are a marketplace and business toolkit that connects clients with
+          independent photographers and videographers ("creatives") and provides tools to
+          quote, contract, invoice and deliver work. Creatives are independent businesses,
+          not our employees or agents. The contract for any shoot is between the client and
+          the creative.</p>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-600 text-navy-700">2. Accounts</h2>
+        <p class="mt-3">You must provide accurate details, keep your login secure, and be at
+          least 18. You're responsible for activity under your account. Creatives are
+          responsible for the accuracy of their listings, pricing, ABN and any required
+          insurance or working-with-children checks.</p>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-600 text-navy-700">3. Bookings, quotes &amp; payments</h2>
+        <p class="mt-3">Quotes, deposits and balances are set by the creative and shown
+          before you commit. Prices include GST where applicable. Paying a deposit confirms a
+          booking subject to the creative's terms and the agreed contract. Payments are
+          handled by our payment provider; platform or processing fees, where they apply, are
+          disclosed at the time.</p>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-600 text-navy-700">4. Cancellations &amp; refunds</h2>
+        <p class="mt-3">Cancellation and refund outcomes follow the booking's contract and the
+          refund tiers shown at cancellation time. Nothing in these terms limits rights you
+          have under the Australian Consumer Law.</p>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-600 text-navy-700">5. Content &amp; intellectual property</h2>
+        <p class="mt-3">Creatives retain ownership of their work and grant clients the licence
+          set out in their package or contract. By uploading content you grant us a limited
+          licence to host and display it to operate the platform. Don't upload content you
+          don't have the rights to.</p>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-600 text-navy-700">6. Acceptable use</h2>
+        <p class="mt-3">Don't misuse the platform: no unlawful, infringing, harassing or
+          fraudulent activity, no attempts to take enquiries off-platform to avoid fees, and
+          no interfering with the service's security or operation.</p>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-600 text-navy-700">7. Disputes</h2>
+        <p class="mt-3">If something goes wrong with a booking, raise a dispute from the
+          booking page and our team will help mediate. We may hold or reverse payments where
+          our policies and the law allow.</p>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-600 text-navy-700">8. Liability</h2>
+        <p class="mt-3">The platform is provided "as is". To the extent permitted by law, and
+          subject to the Australian Consumer Law, we're not liable for the acts of creatives
+          or clients or for indirect loss. Our guarantees that cannot be excluded under the
+          ACL still apply.</p>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-600 text-navy-700">9. Changes &amp; governing law</h2>
+        <p class="mt-3">We may update these terms; material changes will be notified and the
+          effective date updated. These terms are governed by the laws of Victoria, Australia.</p>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-600 text-navy-700">10. Contact</h2>
+        <p class="mt-3">Questions about these terms? Email
+          <a href="mailto:support@lens.example" class="font-semibold text-teal-600 hover:underline">support@lens.example</a>.</p>
+      </div>
+
+      <p class="rounded-xl bg-beige-100 p-4 text-xs text-navy-400">This page is a general
+        summary for the {{ BRAND_NAME }} platform and isn't legal advice.</p>
+    </div>
+
+    <p class="mt-6 text-sm text-navy-400">See also our
+      <a href="{% url 'marketplace:privacy' %}" class="font-semibold text-teal-600 hover:underline">Privacy Policy</a>.</p>
+  </div>
+</section>
+{% endblock %}

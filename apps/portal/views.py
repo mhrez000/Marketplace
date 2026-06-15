@@ -64,14 +64,10 @@ def booking_detail(request, pk):
 
 def _handle_client_action(request, booking, contract):
     action = request.POST.get("action")
-    if action == "accept_quote" and booking.quote:
-        if booking.quote.is_expired:
-            messages.error(request, "This quote has expired — ask the creative for an updated one.")
-        else:
-            booking.quote.status = Quote.Status.ACCEPTED
-            booking.quote.save(update_fields=["status", "updated_at"])
-            messages.success(request, "Quote accepted! Please review and sign your contract.")
-    elif action == "sign_contract" and contract and not contract.signed_by_client_at:
+    # Note: quote acceptance has its own dedicated view (portal:quote_accept), which
+    # runs the full flow.accept_quote() (creates the booking + contract). There is no
+    # accept_quote action here on purpose.
+    if action == "sign_contract" and contract and not contract.signed_by_client_at:
         name = request.POST.get("signature_name", "").strip()
         if not name:
             messages.error(request, "Please type your full name to sign.")

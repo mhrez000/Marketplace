@@ -1,0 +1,68 @@
+{% extends "base_public.html" %}
+{% block title %}Help &amp; support — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<section class="container-content py-16">
+  <div class="mx-auto max-w-3xl">
+    <div class="text-center">
+      <p class="eyebrow">Support</p>
+      <h1 class="mt-2 text-4xl font-600">Help &amp; support</h1>
+      <p class="mt-4 text-navy-500">Answers to common questions. Still stuck? We're a quick email away.</p>
+    </div>
+
+    <div class="mt-12 grid gap-8 lg:grid-cols-2">
+      <div>
+        <h2 class="text-lg font-600 text-navy-700">For clients</h2>
+        <div class="mt-4 space-y-3">
+          <details class="card p-5">
+            <summary class="cursor-pointer font-semibold text-navy-700">How do I book a creative?</summary>
+            <p class="mt-3 text-sm text-navy-500">Search by style, suburb and date, open a profile, then send an enquiry. The creative replies with a quote you can accept, sign and pay — all in your portal.</p>
+          </details>
+          <details class="card p-5">
+            <summary class="cursor-pointer font-semibold text-navy-700">Is my payment safe?</summary>
+            <p class="mt-3 text-sm text-navy-500">Deposits and balances are handled by our secure payment provider. You only pay once you've accepted a quote and signed the contract.</p>
+          </details>
+          <details class="card p-5">
+            <summary class="cursor-pointer font-semibold text-navy-700">How do I get my photos?</summary>
+            <p class="mt-3 text-sm text-navy-500">When your creative delivers, the gallery appears on your booking page — view, download and favourite your shots there.</p>
+          </details>
+          <details class="card p-5">
+            <summary class="cursor-pointer font-semibold text-navy-700">What if something goes wrong?</summary>
+            <p class="mt-3 text-sm text-navy-500">Open your booking and raise a dispute — our team will help mediate. You can also message your creative directly at any time.</p>
+          </details>
+        </div>
+        <a href="{% url 'marketplace:search' %}" class="btn-primary mt-6">Find a creative</a>
+      </div>
+
+      <div>
+        <h2 class="text-lg font-600 text-navy-700">For creatives</h2>
+        <div class="mt-4 space-y-3">
+          <details class="card p-5">
+            <summary class="cursor-pointer font-semibold text-navy-700">How do I list my work?</summary>
+            <p class="mt-3 text-sm text-navy-500">Create an account and follow onboarding — add your portfolio, packages, service area and availability in under 20 minutes.</p>
+          </details>
+          <details class="card p-5">
+            <summary class="cursor-pointer font-semibold text-navy-700">What does it cost?</summary>
+            <p class="mt-3 text-sm text-navy-500">Listing is free. Paid plans unlock the full CRM, contracts, invoicing and AI drafting — see <a href="{% url 'marketplace:pricing' %}" class="font-semibold text-teal-600 hover:underline">Pricing</a>. We never charge per-lead fees.</p>
+          </details>
+          <details class="card p-5">
+            <summary class="cursor-pointer font-semibold text-navy-700">How do I get paid?</summary>
+            <p class="mt-3 text-sm text-navy-500">Send a quote, collect the deposit on acceptance, then the balance on delivery — all tracked in your dashboard.</p>
+          </details>
+          <details class="card p-5">
+            <summary class="cursor-pointer font-semibold text-navy-700">How does verification work?</summary>
+            <p class="mt-3 text-sm text-navy-500">We check ABN, insurance and (where relevant) a working-with-children check before your profile is marked verified.</p>
+          </details>
+        </div>
+        <a href="{% url 'marketplace:for_creatives' %}" class="btn-accent mt-6">Learn more</a>
+      </div>
+    </div>
+
+    <div class="card mt-10 flex flex-col items-center gap-2 p-8 text-center">
+      <h2 class="text-xl font-600 text-navy-700">Still need a hand?</h2>
+      <p class="text-sm text-navy-500">Email us and we'll get back to you within one business day.</p>
+      <a href="mailto:support@lens.example" class="btn-primary mt-3">Email support</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

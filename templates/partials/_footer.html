@@ -43,9 +43,9 @@
     <div class="container-content flex flex-col items-center justify-between gap-3 py-6 text-xs text-sky-200/70 sm:flex-row">
       <p>&copy; {% now "Y" %} {{ BRAND_NAME }}. Melbourne, Australia.</p>
       <p class="flex gap-4">
-        <a href="#" class="hover:text-white">Privacy</a>
-        <a href="#" class="hover:text-white">Terms</a>
-        <a href="#" class="hover:text-white">Help</a>
+        <a href="{% url 'marketplace:privacy' %}" class="hover:text-white">Privacy</a>
+        <a href="{% url 'marketplace:terms' %}" class="hover:text-white">Terms</a>
+        <a href="{% url 'marketplace:help' %}" class="hover:text-white">Help</a>
       </p>
     </div>
   </div>
