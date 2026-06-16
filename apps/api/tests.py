@@ -110,6 +110,78 @@ class ApiBookingsTests(TestCase):
         self.assertGreaterEqual(len(listing.data), 1)
 
 
+class ApiTransactionFlowTests(TestCase):
+    """Client quote->sign->deposit flow over the API, mirroring the web portal."""
+
+    @classmethod
+    def setUpTestData(cls):
+        Seed().handle(quiet=True)
+
+    def _auth(self, email):
+        c = APIClient()
+        token = c.post(reverse("api:login"), {"email": email, "password": "lens12345"}).data["token"]
+        c.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+        return c
+
+    def _pending_quote(self, client):
+        """Find a client enquiry that has a SENT/DRAFT quote to act on."""
+        for e in client.get(reverse("api:enquiries")).data:
+            for q in e["quotes"]:
+                if q["status"] in ("sent", "draft") and not q["is_expired"]:
+                    return q
+        return None
+
+    def test_enquiries_include_quotes(self):
+        c = self._auth("northcote@lens.test")
+        data = c.get(reverse("api:enquiries")).data
+        self.assertTrue(any("quotes" in e for e in data))
+
+    def test_accept_quote_then_sign_then_pay(self):
+        c = self._auth("northcote@lens.test")
+        quote = self._pending_quote(c)
+        self.assertIsNotNone(quote, "seed should leave northcote a pending quote")
+
+        accept = c.post(reverse("api:quote_accept", args=[quote["id"]]))
+        self.assertEqual(accept.status_code, 201)
+        bid = accept.data["id"]
+        self.assertEqual(accept.data["status"], "contract_sent")
+        self.assertEqual(accept.data["next_action"], "sign")
+        self.assertIsNotNone(accept.data["contract"])
+
+        sign = c.post(reverse("api:booking_sign", args=[bid]), {"name": "Northcote Realty"})
+        self.assertEqual(sign.status_code, 200)
+        self.assertEqual(sign.data["status"], "contract_signed")
+        self.assertEqual(sign.data["next_action"], "pay_deposit")
+
+        pay = c.post(reverse("api:booking_pay_deposit", args=[bid]))
+        self.assertEqual(pay.status_code, 200)
+        self.assertIn(pay.data["status"], ("deposit_paid", "confirmed"))
+        self.assertIsNone(pay.data["next_action"])
+
+    def test_sign_requires_name(self):
+        c = self._auth("northcote@lens.test")
+        quote = self._pending_quote(c)
+        bid = c.post(reverse("api:quote_accept", args=[quote["id"]])).data["id"]
+        self.assertEqual(c.post(reverse("api:booking_sign", args=[bid]), {"name": ""}).status_code, 400)
+
+    def test_decline_quote(self):
+        c = self._auth("northcote@lens.test")
+        quote = self._pending_quote(c)
+        resp = c.post(reverse("api:quote_decline", args=[quote["id"]]))
+        self.assertEqual(resp.status_code, 200)
+        # the same quote should no longer be pending
+        self.assertIsNone(next((q for e in c.get(reverse("api:enquiries")).data
+                                for q in e["quotes"] if q["id"] == quote["id"]
+                                and q["status"] in ("sent", "draft")), None))
+
+    def test_cannot_act_on_others_booking(self):
+        owner = self._auth("northcote@lens.test")
+        quote = self._pending_quote(owner)
+        bid = owner.post(reverse("api:quote_accept", args=[quote["id"]])).data["id"]
+        intruder = self._auth("sam@lens.test")
+        self.assertEqual(intruder.post(reverse("api:booking_pay_deposit", args=[bid])).status_code, 404)
+
+
 class ApiMessagingTests(TestCase):
     @classmethod
     def setUpTestData(cls):

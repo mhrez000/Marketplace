@@ -82,20 +82,26 @@ class CreativeDetailSerializer(CreativeListSerializer):
 class EnquirySerializer(serializers.ModelSerializer):
     workspace_name = serializers.CharField(source="workspace.business_name", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    quotes = serializers.SerializerMethodField()
 
     class Meta:
         model = Enquiry
         fields = ["id", "workspace_name", "event_type", "event_date", "location",
-                  "budget_band", "message", "status", "status_display", "created_at"]
+                  "budget_band", "message", "status", "status_display", "created_at", "quotes"]
         read_only_fields = ["id", "status", "created_at"]
+
+    def get_quotes(self, obj):
+        return QuoteSerializer(obj.quotes.all().order_by("-created_at"), many=True).data
 
 
 class QuoteSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    is_expired = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Quote
-        fields = ["id", "title", "total", "deposit_amount", "status", "status_display", "expires_at"]
+        fields = ["id", "title", "total", "deposit_amount", "status", "status_display",
+                  "expires_at", "is_expired"]
 
 
 class MessageSerializer(serializers.ModelSerializer):

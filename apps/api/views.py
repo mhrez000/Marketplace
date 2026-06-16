@@ -8,11 +8,13 @@ from rest_framework.authtoken.models import Token
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
+from apps.bookings import services as flow
 from apps.bookings.models import Booking
 from apps.bookings.services import create_enquiry
 from apps.core.selectors import annotate_ratings
 from apps.enquiries.models import Enquiry
 from apps.messaging.models import Message, Thread
+from apps.payments.models import Invoice
 from apps.profiles.models import CATEGORY_CHOICES, CreativeProfile
 from apps.profiles.services import filter_listable
 from apps.workspaces.models import Workspace
@@ -119,14 +121,106 @@ def bookings(request):
     return Response(BookingSerializer(qs, many=True).data)
 
 
+def _next_action(b, contract):
+    """What the client can do next, so the app shows the right button."""
+    S = Booking.Status
+    if b.status == S.CONTRACT_SENT and contract and not contract.signed_by_client_at:
+        return "sign"
+    if b.status == S.CONTRACT_SIGNED:
+        return "pay_deposit"
+    final = b.invoices.filter(invoice_type=Invoice.Type.FINAL).first()
+    if final and not final.is_paid:
+        return "pay_final"
+    return None
+
+
+def _booking_payload(b):
+    data = BookingSerializer(b).data
+    data["quote"] = QuoteSerializer(b.quote).data if b.quote else None
+    contract = getattr(b, "contract", None)
+    data["contract"] = (
+        {"body": contract.body, "signed_by_client": bool(contract.signed_by_client_at)}
+        if contract else None
+    )
+    data["next_action"] = _next_action(b, contract)
+    return data
+
+
 @api_view(["GET"])
 def booking_detail(request, pk):
     b = get_object_or_404(
         Booking.objects.filter(Q(client=request.user) | Q(workspace__owner=request.user)), pk=pk)
-    data = BookingSerializer(b).data
-    quote = b.quote
-    data["quote"] = QuoteSerializer(quote).data if quote else None
-    return Response(data)
+    return Response(_booking_payload(b))
+
+
+def _client_booking(request, pk):
+    return get_object_or_404(Booking, pk=pk, client=request.user)
+
+
+@api_view(["POST"])
+def booking_sign(request, pk):
+    b = _client_booking(request, pk)
+    contract = getattr(b, "contract", None)
+    if not contract or contract.signed_by_client_at:
+        return Response({"detail": "Nothing to sign."}, status=400)
+    name = (request.data.get("name") or "").strip()
+    if not name:
+        return Response({"detail": "Please provide your full name to sign."}, status=400)
+    flow.sign_contract_client(contract, name=name, request=request)
+    b.refresh_from_db()
+    return Response(_booking_payload(b))
+
+
+@api_view(["POST"])
+def booking_pay_deposit(request, pk):
+    b = _client_booking(request, pk)
+    try:
+        flow.pay_deposit(b)
+    except flow.DateUnavailable:
+        return Response(
+            {"detail": "That date was just booked by someone else. Message the creative."},
+            status=409)
+    b.refresh_from_db()
+    return Response(_booking_payload(b))
+
+
+@api_view(["POST"])
+def booking_pay_final(request, pk):
+    b = _client_booking(request, pk)
+    flow.pay_final(b)
+    b.refresh_from_db()
+    return Response(_booking_payload(b))
+
+
+@api_view(["POST"])
+def quote_accept(request, pk):
+    from apps.enquiries.models import Quote
+    quote = get_object_or_404(Quote, pk=pk, enquiry__client=request.user)
+    if quote.is_expired:
+        return Response({"detail": "This quote has expired — ask for an updated one."}, status=400)
+    if quote.status in {Quote.Status.SENT, Quote.Status.DRAFT}:
+        booking = flow.accept_quote(quote)
+        return Response(_booking_payload(booking), status=201)
+    booking = quote.bookings.first()
+    if booking:
+        return Response(_booking_payload(booking))
+    return Response({"detail": "This quote can no longer be accepted."}, status=400)
+
+
+@api_view(["POST"])
+def quote_decline(request, pk):
+    from apps.enquiries.models import Quote
+    quote = get_object_or_404(Quote, pk=pk, enquiry__client=request.user)
+    if quote.status in {Quote.Status.SENT, Quote.Status.DRAFT}:
+        quote.status = Quote.Status.DECLINED
+        quote.save(update_fields=["status", "updated_at"])
+        enquiry = quote.enquiry
+        enquiry.status = Enquiry.Status.DECLINED
+        enquiry.save(update_fields=["status", "updated_at"])
+        from apps.notifications.models import notify
+        notify(enquiry.workspace.owner, f"{request.user.email} declined your quote",
+               url="/app/leads/", icon="bell")
+    return Response({"status": "declined"})
 
 
 @api_view(["GET"])
