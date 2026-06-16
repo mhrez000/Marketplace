@@ -12,13 +12,16 @@ from apps.bookings.models import Booking
 from apps.bookings.services import create_enquiry
 from apps.core.selectors import annotate_ratings
 from apps.enquiries.models import Enquiry
+from apps.messaging.models import Message, Thread
 from apps.profiles.models import CATEGORY_CHOICES, CreativeProfile
 from apps.profiles.services import filter_listable
 from apps.workspaces.models import Workspace
 
 from .serializers import (BookingSerializer, CreativeDetailSerializer,
                           CreativeListSerializer, EnquirySerializer,
-                          QuoteSerializer, UserSerializer)
+                          MessageSerializer, QuoteSerializer,
+                          ThreadDetailSerializer, ThreadListSerializer,
+                          UserSerializer)
 
 User = get_user_model()
 
@@ -124,3 +127,31 @@ def booking_detail(request, pk):
     quote = b.quote
     data["quote"] = QuoteSerializer(quote).data if quote else None
     return Response(data)
+
+
+@api_view(["GET"])
+def threads(request):
+    qs = (Thread.objects.filter(Q(client=request.user) | Q(workspace__owner=request.user))
+          .select_related("workspace", "workspace__owner", "client").prefetch_related("messages"))
+    items = [t for t in qs if t.last_message]
+    items.sort(key=lambda t: t.last_message.created_at, reverse=True)
+    return Response(ThreadListSerializer(items, many=True, context={"request": request}).data)
+
+
+@api_view(["GET", "POST"])
+def thread_detail(request, pk):
+    thread = get_object_or_404(
+        Thread.objects.select_related("workspace", "workspace__owner", "client", "enquiry"), pk=pk)
+    if not thread.is_participant(request.user):
+        return Response({"detail": "Not your conversation."}, status=403)
+    if request.method == "POST":
+        body = (request.data.get("body") or "").strip()
+        if not body:
+            return Response({"detail": "Message cannot be empty."}, status=400)
+        msg = Message.objects.create(thread=thread, sender=request.user, body=body)
+        # A creative replying to an enquiry counts as the first response (mirrors web).
+        if thread.enquiry and request.user.id == thread.workspace.owner_id:
+            thread.enquiry.mark_responded()
+        return Response(MessageSerializer(msg, context={"request": request}).data, status=201)
+    thread.mark_read_for(request.user)
+    return Response(ThreadDetailSerializer(thread, context={"request": request}).data)

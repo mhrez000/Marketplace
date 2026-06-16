@@ -108,3 +108,51 @@ class ApiBookingsTests(TestCase):
         listing = self.client.get(reverse("api:enquiries"))
         self.assertEqual(listing.status_code, 200)
         self.assertGreaterEqual(len(listing.data), 1)
+
+
+class ApiMessagingTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        Seed().handle(quiet=True)
+
+    def _auth(self, email):
+        c = APIClient()
+        token = c.post(reverse("api:login"), {"email": email, "password": "lens12345"}).data["token"]
+        c.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+        return c
+
+    def test_threads_requires_auth(self):
+        self.assertEqual(APIClient().get(reverse("api:threads")).status_code, 401)
+
+    def test_thread_list_and_detail(self):
+        c = self._auth("harper@lens.test")  # a creative with seeded conversations
+        threads = c.get(reverse("api:threads"))
+        self.assertEqual(threads.status_code, 200)
+        self.assertGreaterEqual(len(threads.data), 1)
+        first = threads.data[0]
+        for key in ("id", "other", "last_message", "unread"):
+            self.assertIn(key, first)
+        detail = c.get(reverse("api:thread_detail", args=[first["id"]]))
+        self.assertEqual(detail.status_code, 200)
+        self.assertIn("messages", detail.data)
+
+    def test_send_message(self):
+        c = self._auth("harper@lens.test")
+        tid = c.get(reverse("api:threads")).data[0]["id"]
+        before = len(c.get(reverse("api:thread_detail", args=[tid])).data["messages"])
+        sent = c.post(reverse("api:thread_detail", args=[tid]), {"body": "On it — thanks!"})
+        self.assertEqual(sent.status_code, 201)
+        self.assertTrue(sent.data["sender_is_me"])
+        after = len(c.get(reverse("api:thread_detail", args=[tid])).data["messages"])
+        self.assertEqual(after, before + 1)
+
+    def test_empty_message_rejected(self):
+        c = self._auth("harper@lens.test")
+        tid = c.get(reverse("api:threads")).data[0]["id"]
+        self.assertEqual(c.post(reverse("api:thread_detail", args=[tid]), {"body": "  "}).status_code, 400)
+
+    def test_non_participant_forbidden(self):
+        owner = self._auth("harper@lens.test")
+        tid = owner.get(reverse("api:threads")).data[0]["id"]
+        intruder = self._auth("juniper@lens.test")  # unrelated creative
+        self.assertEqual(intruder.get(reverse("api:thread_detail", args=[tid])).status_code, 403)

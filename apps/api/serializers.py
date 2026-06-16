@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from apps.bookings.models import Booking
 from apps.enquiries.models import Enquiry, Quote
+from apps.messaging.models import Message, Thread
 from apps.profiles.models import CreativeProfile, Package
 from apps.reviews.models import Review
 
@@ -95,6 +96,65 @@ class QuoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Quote
         fields = ["id", "title", "total", "deposit_amount", "status", "status_display", "expires_at"]
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender_is_me = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Message
+        fields = ["id", "body", "sender_is_me", "created_at"]
+
+    def get_sender_is_me(self, obj):
+        return obj.sender_id == self.context["request"].user.id
+
+
+class ThreadListSerializer(serializers.ModelSerializer):
+    other = serializers.SerializerMethodField()
+    last_message = serializers.SerializerMethodField()
+    last_at = serializers.SerializerMethodField()
+    unread = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Thread
+        fields = ["id", "subject", "other", "last_message", "last_at", "unread"]
+
+    def _user(self):
+        return self.context["request"].user
+
+    def get_other(self, obj):
+        return obj.other_label(self._user())
+
+    def get_last_message(self, obj):
+        m = obj.last_message
+        return m.body if m else ""
+
+    def get_last_at(self, obj):
+        m = obj.last_message
+        return m.created_at if m else None
+
+    def get_unread(self, obj):
+        return obj.unread_for(self._user())
+
+
+class ThreadDetailSerializer(serializers.ModelSerializer):
+    other = serializers.SerializerMethodField()
+    booking_id = serializers.SerializerMethodField()
+    messages = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Thread
+        fields = ["id", "subject", "other", "booking_id", "messages"]
+
+    def get_other(self, obj):
+        return obj.other_label(self.context["request"].user)
+
+    def get_booking_id(self, obj):
+        return str(obj.booking_id) if obj.booking_id else None
+
+    def get_messages(self, obj):
+        return MessageSerializer(obj.messages.select_related("sender"),
+                                 many=True, context=self.context).data
 
 
 class BookingSerializer(serializers.ModelSerializer):
