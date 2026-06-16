@@ -35,6 +35,9 @@ GET    /api/v1/enquiries/         -> [enquiry]           (token)
 POST   /api/v1/enquiries/         -> enquiry             (token)
 GET    /api/v1/bookings/          -> [booking]           (token)
 GET    /api/v1/bookings/{id}/     -> booking (+quote)    (token)
+GET    /api/v1/messages/          -> [thread summary]    (token)
+GET    /api/v1/messages/{id}/     -> thread (+messages)  (token; marks read)
+POST   /api/v1/messages/{id}/     -> message             (token; body=text)
 ```
 Auth: DRF token in the `Authorization: Token <key>` header. Mobile clients persist it
 (Android DataStore, iOS UserDefaults) and confirm it on launch via `/auth/me/`.
