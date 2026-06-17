@@ -70,11 +70,19 @@ class CreativeDetailSerializer(CreativeListSerializer):
     packages = serializers.SerializerMethodField()
     reviews = serializers.SerializerMethodField()
     response_hours = serializers.SerializerMethodField()
+    is_favourited = serializers.SerializerMethodField()
 
     class Meta(CreativeListSerializer.Meta):
         fields = CreativeListSerializer.Meta.fields + [
             "bio", "equipment", "languages", "service_radius_km",
-            "styles", "packages", "reviews", "response_hours"]
+            "styles", "packages", "reviews", "response_hours", "is_favourited"]
+
+    def get_is_favourited(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        from apps.marketplace.models import Favourite
+        return Favourite.objects.filter(client=request.user, workspace=obj.workspace).exists()
 
     def get_styles(self, obj):
         return obj.style_list

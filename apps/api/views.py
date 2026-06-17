@@ -97,7 +97,29 @@ def creatives(request):
 def creative_detail(request, slug):
     ws = get_object_or_404(Workspace.objects.filter(is_published=True), slug=slug)
     profile = annotate_ratings(CreativeProfile.objects.filter(pk=ws.profile.pk)).first()
-    return Response(CreativeDetailSerializer(profile).data)
+    return Response(CreativeDetailSerializer(profile, context={"request": request}).data)
+
+
+@api_view(["POST"])
+def creative_favourite(request, slug):
+    from apps.marketplace.models import Favourite
+    ws = get_object_or_404(Workspace.objects.filter(is_published=True), slug=slug)
+    fav = Favourite.objects.filter(client=request.user, workspace=ws).first()
+    if fav:
+        fav.delete()
+        return Response({"is_favourited": False})
+    Favourite.objects.create(client=request.user, workspace=ws)
+    return Response({"is_favourited": True})
+
+
+@api_view(["GET"])
+def favourites(request):
+    from apps.marketplace.models import Favourite
+    ws_ids = Favourite.objects.filter(client=request.user).values_list("workspace_id", flat=True)
+    qs = annotate_ratings(
+        CreativeProfile.objects.filter(workspace_id__in=ws_ids, workspace__is_published=True)
+        .select_related("workspace")).order_by("-is_featured", "-avg_rating")
+    return Response(CreativeListSerializer(qs, many=True).data)
 
 
 @api_view(["GET", "POST"])

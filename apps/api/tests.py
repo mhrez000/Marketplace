@@ -188,6 +188,40 @@ class ApiTransactionFlowTests(TestCase):
         self.assertEqual(intruder.post(reverse("api:booking_pay_deposit", args=[bid])).status_code, 404)
 
 
+class ApiFavouritesTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        Seed().handle(quiet=True)
+
+    def setUp(self):
+        self.client = APIClient()
+        token = self.client.post(reverse("api:login"),
+                                 {"email": "olivia@lens.test", "password": "lens12345"}).data["token"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+
+    def _is_listed(self, slug):
+        return any(c["slug"] == slug for c in self.client.get(reverse("api:favourites")).data)
+
+    def test_toggle_and_list_favourites(self):
+        slug = self.client.get(reverse("api:creatives")).data[0]["slug"]
+        before = self.client.get(reverse("api:creative_detail", args=[slug])).data["is_favourited"]
+
+        toggled = self.client.post(reverse("api:creative_favourite", args=[slug])).data["is_favourited"]
+        self.assertEqual(toggled, not before)
+        # detail + list both reflect the new state
+        self.assertEqual(
+            self.client.get(reverse("api:creative_detail", args=[slug])).data["is_favourited"], toggled)
+        self.assertEqual(self._is_listed(slug), toggled)
+
+        # toggling again returns to the original state
+        again = self.client.post(reverse("api:creative_favourite", args=[slug])).data["is_favourited"]
+        self.assertEqual(again, before)
+        self.assertEqual(self._is_listed(slug), before)
+
+    def test_favourite_requires_auth(self):
+        self.assertEqual(APIClient().get(reverse("api:favourites")).status_code, 401)
+
+
 class ApiLeadsTests(TestCase):
     @classmethod
     def setUpTestData(cls):
