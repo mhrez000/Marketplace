@@ -15,6 +15,17 @@ class UserSerializer(serializers.Serializer):
     first_name = serializers.CharField()
     last_name = serializers.CharField()
     role_type = serializers.CharField()
+    is_creative = serializers.SerializerMethodField()
+    workspace = serializers.SerializerMethodField()
+
+    def get_is_creative(self, obj):
+        from apps.core.selectors import get_active_workspace
+        return get_active_workspace(obj) is not None
+
+    def get_workspace(self, obj):
+        from apps.core.selectors import get_active_workspace
+        ws = get_active_workspace(obj)
+        return {"slug": ws.slug, "business_name": ws.business_name} if ws else None
 
 
 class PackageSerializer(serializers.ModelSerializer):
@@ -82,14 +93,20 @@ class CreativeDetailSerializer(CreativeListSerializer):
 
 class EnquirySerializer(serializers.ModelSerializer):
     workspace_name = serializers.CharField(source="workspace.business_name", read_only=True)
+    client_name = serializers.SerializerMethodField()
+    event_type_display = serializers.CharField(source="get_event_type_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     quotes = serializers.SerializerMethodField()
 
     class Meta:
         model = Enquiry
-        fields = ["id", "workspace_name", "event_type", "event_date", "location",
-                  "budget_band", "message", "status", "status_display", "created_at", "quotes"]
+        fields = ["id", "workspace_name", "client_name", "event_type", "event_type_display",
+                  "event_date", "location", "budget_band", "message", "status",
+                  "status_display", "created_at", "quotes"]
         read_only_fields = ["id", "status", "created_at"]
+
+    def get_client_name(self, obj):
+        return obj.client.get_full_name() or obj.client.email
 
     def get_quotes(self, obj):
         return QuoteSerializer(obj.quotes.all().order_by("-created_at"), many=True).data

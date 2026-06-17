@@ -188,6 +188,60 @@ class ApiTransactionFlowTests(TestCase):
         self.assertEqual(intruder.post(reverse("api:booking_pay_deposit", args=[bid])).status_code, 404)
 
 
+class ApiLeadsTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        Seed().handle(quiet=True)
+
+    def _auth(self, email):
+        c = APIClient()
+        token = c.post(reverse("api:login"), {"email": email, "password": "lens12345"}).data["token"]
+        c.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+        return c
+
+    def test_me_marks_creatives(self):
+        creative = self._auth("harper@lens.test").get(reverse("api:me")).data
+        self.assertTrue(creative["is_creative"])
+        self.assertIsNotNone(creative["workspace"])
+        client = self._auth("olivia@lens.test").get(reverse("api:me")).data
+        self.assertFalse(client["is_creative"])
+        self.assertIsNone(client["workspace"])
+
+    def test_leads_listed_for_creative_only(self):
+        creative = self._auth("harper@lens.test")
+        leads = creative.get(reverse("api:leads"))
+        self.assertEqual(leads.status_code, 200)
+        self.assertGreaterEqual(len(leads.data), 1)
+        self.assertIn("client_name", leads.data[0])
+        # a pure client has no leads
+        self.assertEqual(self._auth("olivia@lens.test").get(reverse("api:leads")).data, [])
+
+    def test_send_quote_appears_for_client(self):
+        creative = self._auth("harper@lens.test")
+        # find a lead without an accepted/sent quote to keep it clean
+        lead = creative.get(reverse("api:leads")).data[0]
+        sent = creative.post(reverse("api:lead_send_quote", args=[lead["id"]]),
+                             {"title": "Wedding day coverage", "amount": "3200", "deposit_pct": "25"})
+        self.assertEqual(sent.status_code, 201)
+        self.assertEqual(sent.data["status"], "sent")
+        # total includes 10% GST (3200 -> 3520), deposit is 25% of that.
+        self.assertEqual(sent.data["total"], "3520.00")
+        self.assertEqual(sent.data["deposit_amount"], "880.00")
+
+    def test_send_quote_rejects_bad_amount(self):
+        creative = self._auth("harper@lens.test")
+        lead = creative.get(reverse("api:leads")).data[0]
+        self.assertEqual(
+            creative.post(reverse("api:lead_send_quote", args=[lead["id"]]), {"amount": "0"}).status_code, 400)
+
+    def test_client_cannot_send_quote(self):
+        creative = self._auth("harper@lens.test")
+        lead_id = creative.get(reverse("api:leads")).data[0]["id"]
+        client = self._auth("olivia@lens.test")
+        self.assertEqual(
+            client.post(reverse("api:lead_send_quote", args=[lead_id]), {"amount": "100"}).status_code, 403)
+
+
 class ApiGalleryTests(TestCase):
     def setUp(self):
         creative = User.objects.create_user(email="cr@t.com", password="x")

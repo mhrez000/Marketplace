@@ -1,5 +1,7 @@
 """JSON API for the native apps. Token auth; same business logic as the web
 (reuses apps.bookings.services so the three platforms behave identically)."""
+from decimal import Decimal, InvalidOperation
+
 from django.contrib.auth import authenticate, get_user_model
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -11,7 +13,7 @@ from rest_framework.response import Response
 from apps.bookings import services as flow
 from apps.bookings.models import Booking
 from apps.bookings.services import create_enquiry
-from apps.core.selectors import annotate_ratings
+from apps.core.selectors import annotate_ratings, get_active_workspace
 from apps.enquiries.models import Enquiry
 from apps.galleries.models import Asset, Gallery
 from apps.messaging.models import Message, Thread
@@ -225,6 +227,40 @@ def quote_decline(request, pk):
         notify(enquiry.workspace.owner, f"{request.user.email} declined your quote",
                url="/app/leads/", icon="bell")
     return Response({"status": "declined"})
+
+
+@api_view(["GET"])
+def leads(request):
+    """The creative's incoming enquiries (workspaces they own)."""
+    ws = get_active_workspace(request.user)
+    if not ws:
+        return Response([])
+    qs = (Enquiry.objects.filter(workspace=ws)
+          .select_related("client", "workspace").prefetch_related("quotes").order_by("-created_at"))
+    return Response(EnquirySerializer(qs, many=True).data)
+
+
+@api_view(["POST"])
+def lead_send_quote(request, pk):
+    ws = get_active_workspace(request.user)
+    if not ws:
+        return Response({"detail": "Only creatives can send quotes."}, status=403)
+    enquiry = get_object_or_404(Enquiry, pk=pk, workspace=ws)
+    title = (request.data.get("title") or "").strip() or f"Quote — {enquiry.get_event_type_display()}"
+    try:
+        amount = float(request.data.get("amount"))
+    except (TypeError, ValueError):
+        return Response({"detail": "Enter a valid quote amount."}, status=400)
+    if amount <= 0:
+        return Response({"detail": "Quote amount must be greater than zero."}, status=400)
+    try:
+        deposit_pct = Decimal(str(request.data.get("deposit_pct", "25"))) / 100
+    except (InvalidOperation, ValueError):
+        deposit_pct = Decimal("0.25")
+    quote = flow.send_quote(enquiry=enquiry, title=title,
+                            line_items=[{"label": title, "amount": amount}],
+                            deposit_pct=deposit_pct)
+    return Response(QuoteSerializer(quote).data, status=201)
 
 
 @api_view(["GET"])
