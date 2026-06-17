@@ -138,7 +138,7 @@ def _next_action(b, contract):
     return None
 
 
-def _booking_payload(b):
+def _booking_payload(request, b):
     data = BookingSerializer(b).data
     data["quote"] = QuoteSerializer(b.quote).data if b.quote else None
     contract = getattr(b, "contract", None)
@@ -146,7 +146,10 @@ def _booking_payload(b):
         {"body": contract.body, "signed_by_client": bool(contract.signed_by_client_at)}
         if contract else None
     )
-    data["next_action"] = _next_action(b, contract)
+    viewer_is_client = b.client_id == request.user.id
+    data["viewer_is_client"] = viewer_is_client
+    # next_action is the client's call-to-action; only meaningful for the client.
+    data["next_action"] = _next_action(b, contract) if viewer_is_client else None
     data["galleries"] = GallerySummarySerializer(
         b.galleries.filter(is_delivered=True), many=True).data
     return data
@@ -156,7 +159,7 @@ def _booking_payload(b):
 def booking_detail(request, pk):
     b = get_object_or_404(
         Booking.objects.filter(Q(client=request.user) | Q(workspace__owner=request.user)), pk=pk)
-    return Response(_booking_payload(b))
+    return Response(_booking_payload(request, b))
 
 
 def _client_booking(request, pk):
@@ -174,7 +177,7 @@ def booking_sign(request, pk):
         return Response({"detail": "Please provide your full name to sign."}, status=400)
     flow.sign_contract_client(contract, name=name, request=request)
     b.refresh_from_db()
-    return Response(_booking_payload(b))
+    return Response(_booking_payload(request, b))
 
 
 @api_view(["POST"])
@@ -187,7 +190,7 @@ def booking_pay_deposit(request, pk):
             {"detail": "That date was just booked by someone else. Message the creative."},
             status=409)
     b.refresh_from_db()
-    return Response(_booking_payload(b))
+    return Response(_booking_payload(request, b))
 
 
 @api_view(["POST"])
@@ -195,7 +198,31 @@ def booking_pay_final(request, pk):
     b = _client_booking(request, pk)
     flow.pay_final(b)
     b.refresh_from_db()
-    return Response(_booking_payload(b))
+    return Response(_booking_payload(request, b))
+
+
+@api_view(["POST"])
+def booking_deliver(request, pk):
+    """Creative delivers a gallery link (Drive/Dropbox/Pixieset/etc.)."""
+    from django.core.exceptions import ValidationError
+    from django.core.validators import URLValidator
+
+    ws = get_active_workspace(request.user)
+    if not ws:
+        return Response({"detail": "Only creatives can deliver galleries."}, status=403)
+    b = get_object_or_404(Booking, pk=pk, workspace=ws)
+    url = (request.data.get("url") or "").strip()
+    try:
+        URLValidator(schemes=["http", "https"])(url)
+    except ValidationError:
+        return Response({"detail": "Paste a valid link starting with https://."}, status=400)
+    title = (request.data.get("title") or "").strip() or f"{b.title} — Gallery"
+    gallery = Gallery.objects.create(
+        booking=b, title=title, delivery_url=url,
+        gallery_type=Gallery.Type.PHOTO, visibility=Gallery.Visibility.PRIVATE)
+    flow.deliver_gallery(gallery)
+    b.refresh_from_db()
+    return Response(_booking_payload(request, b))
 
 
 @api_view(["POST"])
@@ -206,10 +233,10 @@ def quote_accept(request, pk):
         return Response({"detail": "This quote has expired — ask for an updated one."}, status=400)
     if quote.status in {Quote.Status.SENT, Quote.Status.DRAFT}:
         booking = flow.accept_quote(quote)
-        return Response(_booking_payload(booking), status=201)
+        return Response(_booking_payload(request, booking), status=201)
     booking = quote.bookings.first()
     if booking:
-        return Response(_booking_payload(booking))
+        return Response(_booking_payload(request, booking))
     return Response({"detail": "This quote can no longer be accepted."}, status=400)
 
 

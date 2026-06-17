@@ -16,6 +16,7 @@ urlpatterns = [
     path("bookings/<uuid:pk>/sign/", views.booking_sign, name="booking_sign"),
     path("bookings/<uuid:pk>/pay-deposit/", views.booking_pay_deposit, name="booking_pay_deposit"),
     path("bookings/<uuid:pk>/pay-final/", views.booking_pay_final, name="booking_pay_final"),
+    path("bookings/<uuid:pk>/deliver/", views.booking_deliver, name="booking_deliver"),
     path("leads/", views.leads, name="leads"),
     path("leads/<int:pk>/quote/", views.lead_send_quote, name="lead_send_quote"),
     path("quotes/<int:pk>/accept/", views.quote_accept, name="quote_accept"),

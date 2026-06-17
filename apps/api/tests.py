@@ -241,6 +241,32 @@ class ApiLeadsTests(TestCase):
         self.assertEqual(
             client.post(reverse("api:lead_send_quote", args=[lead_id]), {"amount": "100"}).status_code, 403)
 
+    def test_viewer_role_and_creative_deliver(self):
+        creative = self._auth("harper@lens.test")
+        # a confirmed booking for this creative the client hasn't been delivered yet
+        bookings = creative.get(reverse("api:bookings")).data
+        target = next((b for b in bookings if b["status"] in (
+            "confirmed", "planning", "shoot_completed", "editing")), None)
+        if not target:
+            self.skipTest("no deliverable booking in seed for harper")
+        bid = target["id"]
+        # creative sees viewer_is_client False and no client next_action
+        detail = creative.get(reverse("api:booking_detail", args=[bid])).data
+        self.assertFalse(detail["viewer_is_client"])
+        self.assertIsNone(detail["next_action"])
+        # deliver a gallery link
+        resp = creative.post(reverse("api:booking_deliver", args=[bid]),
+                             {"title": "Final gallery", "url": "https://drive.google.com/xyz"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertGreaterEqual(len(resp.data["galleries"]), 1)
+
+    def test_client_cannot_deliver(self):
+        client = self._auth("olivia@lens.test")
+        bid = client.get(reverse("api:bookings")).data[0]["id"]
+        self.assertEqual(
+            client.post(reverse("api:booking_deliver", args=[bid]),
+                        {"url": "https://drive.google.com/x"}).status_code, 403)
+
 
 class ApiGalleryTests(TestCase):
     def setUp(self):
