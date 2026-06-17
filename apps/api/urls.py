@@ -18,6 +18,8 @@ urlpatterns = [
     path("bookings/<uuid:pk>/pay-final/", views.booking_pay_final, name="booking_pay_final"),
     path("quotes/<int:pk>/accept/", views.quote_accept, name="quote_accept"),
     path("quotes/<int:pk>/decline/", views.quote_decline, name="quote_decline"),
+    path("galleries/<uuid:pk>/", views.gallery_detail, name="gallery_detail"),
+    path("assets/<int:pk>/favourite/", views.asset_favourite, name="asset_favourite"),
     path("messages/", views.threads, name="threads"),
     path("messages/<int:pk>/", views.thread_detail, name="thread_detail"),
 ]

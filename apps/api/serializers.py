@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from apps.bookings.models import Booking
 from apps.enquiries.models import Enquiry, Quote
+from apps.galleries.models import Asset, Gallery
 from apps.messaging.models import Message, Thread
 from apps.profiles.models import CreativeProfile, Package
 from apps.reviews.models import Review
@@ -102,6 +103,47 @@ class QuoteSerializer(serializers.ModelSerializer):
         model = Quote
         fields = ["id", "title", "total", "deposit_amount", "status", "status_display",
                   "expires_at", "is_expired"]
+
+
+class GallerySummarySerializer(serializers.ModelSerializer):
+    is_link_delivery = serializers.BooleanField(read_only=True)
+    provider = serializers.SerializerMethodField()
+    asset_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Gallery
+        fields = ["id", "title", "gallery_type", "is_link_delivery", "delivery_url",
+                  "provider", "delivered_at", "asset_count"]
+
+    def get_provider(self, obj):
+        return obj.provider  # {"name": ..., "icon": ...}
+
+    def get_asset_count(self, obj):
+        return obj.assets.count()
+
+
+class AssetSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Asset
+        fields = ["id", "title", "image_url", "video_url", "asset_type", "accent", "is_favourite"]
+
+    def get_image_url(self, obj):
+        if not obj.image:
+            return None
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.image.url) if request else obj.image.url
+
+
+class GalleryDetailSerializer(GallerySummarySerializer):
+    assets = serializers.SerializerMethodField()
+
+    class Meta(GallerySummarySerializer.Meta):
+        fields = GallerySummarySerializer.Meta.fields + ["assets"]
+
+    def get_assets(self, obj):
+        return AssetSerializer(obj.assets.all(), many=True, context=self.context).data
 
 
 class MessageSerializer(serializers.ModelSerializer):

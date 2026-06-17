@@ -13,17 +13,19 @@ from apps.bookings.models import Booking
 from apps.bookings.services import create_enquiry
 from apps.core.selectors import annotate_ratings
 from apps.enquiries.models import Enquiry
+from apps.galleries.models import Asset, Gallery
 from apps.messaging.models import Message, Thread
 from apps.payments.models import Invoice
 from apps.profiles.models import CATEGORY_CHOICES, CreativeProfile
 from apps.profiles.services import filter_listable
 from apps.workspaces.models import Workspace
 
-from .serializers import (BookingSerializer, CreativeDetailSerializer,
-                          CreativeListSerializer, EnquirySerializer,
-                          MessageSerializer, QuoteSerializer,
-                          ThreadDetailSerializer, ThreadListSerializer,
-                          UserSerializer)
+from .serializers import (AssetSerializer, BookingSerializer,
+                          CreativeDetailSerializer, CreativeListSerializer,
+                          EnquirySerializer, GalleryDetailSerializer,
+                          GallerySummarySerializer, MessageSerializer,
+                          QuoteSerializer, ThreadDetailSerializer,
+                          ThreadListSerializer, UserSerializer)
 
 User = get_user_model()
 
@@ -143,6 +145,8 @@ def _booking_payload(b):
         if contract else None
     )
     data["next_action"] = _next_action(b, contract)
+    data["galleries"] = GallerySummarySerializer(
+        b.galleries.filter(is_delivered=True), many=True).data
     return data
 
 
@@ -221,6 +225,21 @@ def quote_decline(request, pk):
         notify(enquiry.workspace.owner, f"{request.user.email} declined your quote",
                url="/app/leads/", icon="bell")
     return Response({"status": "declined"})
+
+
+@api_view(["GET"])
+def gallery_detail(request, pk):
+    gallery = get_object_or_404(
+        Gallery.objects.filter(is_delivered=True), pk=pk, booking__client=request.user)
+    return Response(GalleryDetailSerializer(gallery, context={"request": request}).data)
+
+
+@api_view(["POST"])
+def asset_favourite(request, pk):
+    asset = get_object_or_404(Asset, pk=pk, gallery__booking__client=request.user)
+    asset.is_favourite = not asset.is_favourite
+    asset.save(update_fields=["is_favourite", "updated_at"])
+    return Response(AssetSerializer(asset, context={"request": request}).data)
 
 
 @api_view(["GET"])

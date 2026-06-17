@@ -1,9 +1,15 @@
 """API contract tests — the native apps depend on these payloads staying stable."""
+from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from apps.bookings.models import Booking
 from apps.core.management.commands.seed_demo import Command as Seed
+from apps.galleries.models import Asset, Gallery
+from apps.workspaces.models import Workspace
+
+User = get_user_model()
 
 
 class ApiAuthTests(TestCase):
@@ -180,6 +186,46 @@ class ApiTransactionFlowTests(TestCase):
         bid = owner.post(reverse("api:quote_accept", args=[quote["id"]])).data["id"]
         intruder = self._auth("sam@lens.test")
         self.assertEqual(intruder.post(reverse("api:booking_pay_deposit", args=[bid])).status_code, 404)
+
+
+class ApiGalleryTests(TestCase):
+    def setUp(self):
+        creative = User.objects.create_user(email="cr@t.com", password="x")
+        User.objects.create_user(email="cl@t.com", password="lens12345")
+        self.ws = Workspace.objects.create(owner=creative, business_name="S", is_published=True)
+        self.client_user = User.objects.get(email="cl@t.com")
+        booking = Booking.objects.create(client=self.client_user, workspace=self.ws)
+        self.gallery = Gallery.objects.create(booking=booking, title="Wedding gallery", is_delivered=True)
+        self.asset = Asset.objects.create(gallery=self.gallery, title="Shot 1")
+        self.booking = booking
+        self.api = APIClient()
+        token = self.api.post(reverse("api:login"),
+                              {"email": "cl@t.com", "password": "lens12345"}).data["token"]
+        self.api.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+
+    def test_gallery_detail_lists_assets(self):
+        r = self.api.get(reverse("api:gallery_detail", args=[self.gallery.id]))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.data["assets"]), 1)
+        self.assertEqual(r.data["assets"][0]["title"], "Shot 1")
+
+    def test_asset_favourite_toggles(self):
+        url = reverse("api:asset_favourite", args=[self.asset.id])
+        self.assertTrue(self.api.post(url).data["is_favourite"])
+        self.assertFalse(self.api.post(url).data["is_favourite"])
+
+    def test_gallery_scoped_to_owner(self):
+        other = APIClient()
+        User.objects.create_user(email="other@t.com", password="lens12345")
+        tok = other.post(reverse("api:login"),
+                         {"email": "other@t.com", "password": "lens12345"}).data["token"]
+        other.credentials(HTTP_AUTHORIZATION=f"Token {tok}")
+        self.assertEqual(other.get(reverse("api:gallery_detail", args=[self.gallery.id])).status_code, 404)
+
+    def test_booking_detail_includes_galleries(self):
+        r = self.api.get(reverse("api:booking_detail", args=[str(self.booking.id)]))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.data["galleries"]), 1)
 
 
 class ApiMessagingTests(TestCase):
