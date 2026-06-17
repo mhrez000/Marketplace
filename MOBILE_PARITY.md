@@ -40,6 +40,8 @@ POST   /api/v1/bookings/{id}/pay-deposit/ -> booking      (token; 409 if date ta
 POST   /api/v1/bookings/{id}/pay-final/   -> booking      (token)
 POST   /api/v1/quotes/{id}/accept/  -> booking            (token; creates it)
 POST   /api/v1/quotes/{id}/decline/ -> {status}           (token)
+GET    /api/v1/galleries/{id}/      -> gallery (+assets)   (token; client-scoped)
+POST   /api/v1/assets/{id}/favourite/ -> asset (toggled)  (token)
 GET    /api/v1/messages/          -> [thread summary]    (token)
 GET    /api/v1/messages/{id}/     -> thread (+messages)  (token; marks read)
 POST   /api/v1/messages/{id}/     -> message             (token; body=text)
