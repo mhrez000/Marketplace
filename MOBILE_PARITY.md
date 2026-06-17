@@ -30,7 +30,9 @@ POST   /api/v1/auth/register/     -> { token, user }
 POST   /api/v1/auth/login/        -> { token, user }
 GET    /api/v1/auth/me/           -> user                (token)
 GET    /api/v1/creatives/         -> [creative]          (?q= &category= &location=)
-GET    /api/v1/creatives/{slug}/  -> creative (+packages, reviews, styles)
+GET    /api/v1/creatives/{slug}/  -> creative (+packages, reviews, styles, is_favourited)
+GET    /api/v1/favourites/        -> [creative]          (token; saved creatives)
+POST   /api/v1/creatives/{slug}/favourite/ -> {is_favourited}  (token; toggle)
 GET    /api/v1/enquiries/         -> [enquiry]           (token)
 POST   /api/v1/enquiries/         -> enquiry             (token)
 GET    /api/v1/bookings/          -> [booking]           (token)
