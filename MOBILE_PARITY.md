@@ -29,6 +29,10 @@ single naming authority.
 POST   /api/v1/auth/register/     -> { token, user }
 POST   /api/v1/auth/login/        -> { token, user }
 GET    /api/v1/auth/me/           -> user (+is_creative, workspace) (token)
+POST   /api/v1/devices/           -> {registered}        (token; push token+platform)
+DELETE /api/v1/devices/           -> 204                 (token; unregister)
+POST   /api/v1/bookings/{id}/upload/ -> gallery (+assets) (creative; multipart image)
+GET    /calendar/<ical_token>.ics -> iCal feed           (public token URL, no auth)
 GET    /api/v1/profile/           -> creative profile     (creative)
 PUT    /api/v1/profile/           -> updated profile      (creative; headline/bio/styles/price)
 GET    /api/v1/analytics/         -> revenue/funnel/trend (creative)
@@ -74,6 +78,27 @@ For any user-facing or data change:
 - Android debug: `http://10.0.2.2:8000/api/v1/` (emulator → host dev server)
 - iOS debug: `http://127.0.0.1:8000/api/v1/`
 - Both release: `https://lens.fly.dev/api/v1/`
+
+## Push notifications — going live
+The backend is built and inert until keyed (same pattern as SMS/Stripe):
+1. Set `FCM_SERVER_KEY` (Firebase Cloud Messaging). `notify()`/`dispatch()` then
+   fan out to every device registered via `POST /api/v1/devices/`.
+2. **Android**: add Firebase (`google-services.json` + the google-services Gradle
+   plugin + `firebase-messaging`), get the FCM token, call
+   `repository.registerPushToken(token)` (hook already present). The plugin needs
+   the json file, so it isn't added to the repo yet.
+3. **iOS**: enable Push Notifications capability + an APNs key in Firebase,
+   request authorization, call `APIClient.registerDevice(token:)` (hook present).
+
+## In-app photo galleries
+Creatives can deliver either a link (Drive/Dropbox) **or** uploaded photos
+(`POST /bookings/{id}/upload/`, multipart). Uploaded media is served from
+`MEDIA_URL` (off the Fly volume in prod).
+
+## Calendar sync
+Each workspace has a secret `ical_token`; the creative subscribes to
+`/calendar/<token>.ics` in Google/Apple Calendar (shoots, due dates, blocked
+days). The subscribe URL is returned by `GET /api/v1/availability/` as `ical_url`.
 
 ## Test accounts (password `lens12345`)
 `olivia@lens.test` (client) · `harper@lens.test` (creative) · `admin@lens.test` (staff).
