@@ -48,6 +48,22 @@ def resolve_audience(audience):
     return qs.distinct()
 
 
+class DeviceToken(TimeStampedModel):
+    """A mobile device registered to receive push notifications."""
+
+    class Platform(models.TextChoices):
+        ANDROID = "android", "Android"
+        IOS = "ios", "iOS"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="device_tokens")
+    token = models.CharField(max_length=512, unique=True)
+    platform = models.CharField(max_length=10, choices=Platform.choices, default=Platform.ANDROID)
+
+    def __str__(self):
+        return f"{self.platform} device for {self.user}"
+
+
 class NotificationPreference(TimeStampedModel):
     """Per-user channel opt-outs. Transactional notifications always send; these
     govern reminders, marketing and SMS (build plan §16)."""
@@ -68,10 +84,22 @@ def notify(user, verb, url="", icon="bell", email=False):
     """Low-level in-app notification (+ optional branded email). For richer,
     matrix-driven events prefer `dispatch()`."""
     n = Notification.objects.create(user=user, verb=verb, url=url, icon=icon)
+    _push(user, verb, url)
     if email and getattr(user, "email", "") and getattr(user, "pk", None):
         from .tasks import send_notification_email
         send_notification_email.delay(user.pk, verb, url)
     return n
+
+
+def _push(user, verb, url):
+    """Fan a notification out to the user's mobile devices (inert without keys)."""
+    try:
+        from django.conf import settings
+
+        from .push import send_push
+        send_push(user, getattr(settings, "BRAND_NAME", "Lens"), verb, url)
+    except Exception:
+        pass
 
 
 def _email_allowed(user, category):
@@ -98,6 +126,7 @@ def dispatch(event_key, recipient, *, verb, url=""):
 
     ev = event(event_key)
     n = Notification.objects.create(user=recipient, verb=verb, url=url, icon=ev["icon"])
+    _push(recipient, verb, url)
     if ("email" in ev["channels"] and getattr(recipient, "email", "")
             and getattr(recipient, "pk", None) and _email_allowed(recipient, ev["category"])):
         send_notification_email.delay(recipient.pk, verb, url,

@@ -6,11 +6,12 @@ from django.urls import include, path
 
 from apps.accounts.views import notification_settings
 from apps.marketplace.sitemaps import SITEMAPS
-from apps.marketplace.views import health, robots_txt
+from apps.marketplace.views import calendar_feed, health, robots_txt
 from apps.payments.views import stripe_webhook
 
 urlpatterns = [
     path("healthz", health, name="healthz"),
+    path("calendar/<uuid:token>.ics", calendar_feed, name="calendar_feed"),
     path("admin/", admin.site.urls),
     path("accounts/", include("allauth.urls")),
     path("settings/notifications/", notification_settings, name="settings_notifications"),
@@ -24,8 +25,9 @@ urlpatterns = [
     path("", include("apps.marketplace.urls")),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve user-uploaded media (gallery photos). On Fly this comes off the data
+# volume via Django; fine for the showcase scale. (Static is handled by WhiteNoise.)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # Branded admin headers.
 admin.site.site_header = f"{settings.BRAND_NAME} — Platform Admin"

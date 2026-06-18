@@ -1,3 +1,5 @@
+import uuid
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -24,6 +26,8 @@ class Workspace(TimeStampedModel):
     # Verification & publishing — the quality moat (admin-controlled).
     verified_at = models.DateTimeField(null=True, blank=True)
     is_published = models.BooleanField(default=False)
+    # Secret token for the read-only iCal subscribe feed (calendar sync).
+    ical_token = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
 
     def __str__(self):
         return self.business_name

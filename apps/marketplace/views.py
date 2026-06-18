@@ -224,6 +224,51 @@ def health(request):
     return HttpResponse("ok", content_type="text/plain")
 
 
+def calendar_feed(request, token):
+    """Read-only iCal feed so a creative can subscribe to their shoots, due dates
+    and blocked days from Google/Apple Calendar (calendar sync)."""
+    from datetime import timezone as dt_timezone
+
+    from django.conf import settings
+    from django.http import Http404, HttpResponse
+    from django.utils import timezone
+
+    from apps.bookings.models import CalendarEvent
+    from apps.profiles import services as availability
+    from apps.workspaces.models import Workspace
+
+    ws = Workspace.objects.filter(ical_token=token).first()
+    if not ws:
+        raise Http404("Unknown calendar")
+
+    def esc(s):
+        return (str(s).replace("\\", "\\\\").replace(",", "\\,")
+                .replace(";", "\\;").replace("\n", "\\n"))
+
+    def utc(dt):
+        return dt.astimezone(dt_timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    now = timezone.now().strftime("%Y%m%dT%H%M%SZ")
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0",
+             f"PRODID:-//{settings.BRAND_NAME}//Calendar//EN", "CALSCALE:GREGORIAN",
+             f"X-WR-CALNAME:{esc(ws.business_name)} — {settings.BRAND_NAME}"]
+    for e in CalendarEvent.objects.filter(workspace=ws).select_related("booking"):
+        lines += ["BEGIN:VEVENT", f"UID:event-{e.id}@lens", f"DTSTAMP:{now}",
+                  f"DTSTART:{utc(e.start)}"]
+        if e.end:
+            lines.append(f"DTEND:{utc(e.end)}")
+        lines.append(f"SUMMARY:{esc(e.title)}")
+        if e.booking_id and e.booking.location:
+            lines.append(f"LOCATION:{esc(e.booking.location)}")
+        lines.append("END:VEVENT")
+    for av in availability.blocked_dates(ws):
+        lines += ["BEGIN:VEVENT", f"UID:block-{av.id}@lens", f"DTSTAMP:{now}",
+                  f"DTSTART;VALUE=DATE:{av.date.strftime('%Y%m%d')}",
+                  "SUMMARY:Blocked (unavailable)", "TRANSP:OPAQUE", "END:VEVENT"]
+    lines.append("END:VCALENDAR")
+    return HttpResponse("\r\n".join(lines), content_type="text/calendar; charset=utf-8")
+
+
 def robots_txt(request):
     from django.http import HttpResponse
     lines = ["User-agent: *", "Allow: /", "Disallow: /app/", "Disallow: /portal/",

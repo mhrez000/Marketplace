@@ -1,8 +1,19 @@
 """API contract tests — the native apps depend on these payloads staying stable."""
+import io
+import tempfile
+
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 from django.urls import reverse
+from PIL import Image
 from rest_framework.test import APIClient
+
+
+def _png_bytes():
+    buf = io.BytesIO()
+    Image.new("RGB", (4, 4), (47, 65, 86)).save(buf, "PNG")
+    return buf.getvalue()
 
 from apps.bookings.models import Booking
 from apps.core.management.commands.seed_demo import Command as Seed
@@ -45,6 +56,21 @@ class ApiAuthTests(TestCase):
 
     def test_me_requires_auth(self):
         self.assertEqual(self.client.get(reverse("api:me")).status_code, 401)
+
+    def test_register_and_remove_device(self):
+        token = self.client.post(reverse("api:login"),
+                                 {"email": "olivia@lens.test", "password": "lens12345"}).data["token"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+        reg = self.client.post(reverse("api:devices"), {"token": "abc123", "platform": "ios"})
+        self.assertEqual(reg.status_code, 201)
+        from apps.notifications.models import DeviceToken
+        self.assertTrue(DeviceToken.objects.filter(token="abc123").exists())
+        # push is inert without FCM_SERVER_KEY — notifying never raises
+        from apps.notifications.models import notify
+        notify(DeviceToken.objects.get(token="abc123").user, "Test push", url="/x")
+        self.assertEqual(self.client.delete(reverse("api:devices"), {"token": "abc123"},
+                                            format="json").status_code, 204)
+        self.assertFalse(DeviceToken.objects.filter(token="abc123").exists())
 
     def test_me_returns_profile(self):
         token = self.client.post(reverse("api:login"),
@@ -244,6 +270,36 @@ class ApiCreativeProfileTests(TestCase):
             client.post(reverse("api:booking_advance", args=[bid]), {"step": "shoot_completed"}).status_code, 403)
 
 
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class ApiUploadTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        Seed().handle(quiet=True)
+
+    def _auth(self, email):
+        c = APIClient()
+        token = c.post(reverse("api:login"), {"email": email, "password": "lens12345"}).data["token"]
+        c.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+        return c
+
+    def test_creative_uploads_photos(self):
+        c = self._auth("harper@lens.test")
+        bid = c.get(reverse("api:bookings")).data[0]["id"]
+        img = SimpleUploadedFile("shot.png", _png_bytes(), content_type="image/png")
+        resp = c.post(reverse("api:gallery_upload", args=[bid]), {"image": img}, format="multipart")
+        self.assertEqual(resp.status_code, 201)
+        self.assertGreaterEqual(len(resp.data["assets"]), 1)
+        self.assertTrue(resp.data["assets"][0]["image_url"])
+        self.assertFalse(resp.data["is_link_delivery"])  # an in-app (uploaded) gallery
+
+    def test_client_cannot_upload(self):
+        c = self._auth("olivia@lens.test")
+        bid = c.get(reverse("api:bookings")).data[0]["id"]
+        img = SimpleUploadedFile("x.png", _png_bytes(), content_type="image/png")
+        self.assertEqual(
+            c.post(reverse("api:gallery_upload", args=[bid]), {"image": img}, format="multipart").status_code, 403)
+
+
 class ApiPolishTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -296,6 +352,25 @@ class ApiPolishTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIsNotNone(resp.data["dispute"])
         self.assertTrue(len(resp.data["dispute_reasons"]) > 0)
+
+    def test_availability_exposes_ical_url(self):
+        data = self._auth("harper@lens.test").get(reverse("api:availability")).data
+        self.assertIn("ical_url", data)
+        self.assertIn("/calendar/", data["ical_url"])
+
+    def test_ical_feed_renders(self):
+        from apps.core.selectors import get_active_workspace
+        ws = get_active_workspace(User.objects.get(email="harper@lens.test"))
+        r = self.client.get(f"/calendar/{ws.ical_token}.ics", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r["content-type"], "text/calendar; charset=utf-8")
+        self.assertIn(b"BEGIN:VCALENDAR", r.content)
+        self.assertIn(b"END:VCALENDAR", r.content)
+
+    def test_ical_feed_bad_token_404(self):
+        import uuid as _uuid
+        self.assertEqual(
+            self.client.get(f"/calendar/{_uuid.uuid4()}.ics", SERVER_NAME="localhost").status_code, 404)
 
 
 class ApiFavouritesTests(TestCase):

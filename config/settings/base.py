@@ -234,3 +234,7 @@ CELERY_BEAT_SCHEDULE = {
 SMS_ENABLED = env.bool("SMS_ENABLED", default=False)
 CLICKSEND_USERNAME = env("CLICKSEND_USERNAME", default="")
 CLICKSEND_API_KEY = env("CLICKSEND_API_KEY", default="")
+
+# Push notifications (Firebase Cloud Messaging) — inert until a key is set.
+# Mobile devices register via POST /api/v1/devices/.
+FCM_SERVER_KEY = env("FCM_SERVER_KEY", default="")

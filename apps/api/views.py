@@ -7,7 +7,9 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import (api_view, parser_classes,
+                                        permission_classes)
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
 from apps.bookings import services as flow
@@ -67,6 +69,22 @@ def login(request):
 @api_view(["GET"])
 def me(request):
     return Response(UserSerializer(request.user).data)
+
+
+@api_view(["POST", "DELETE"])
+def devices(request):
+    """Register (or remove) a mobile push token for the signed-in user."""
+    from apps.notifications.models import DeviceToken
+    token = (request.data.get("token") or "").strip()
+    if not token:
+        return Response({"detail": "A device token is required."}, status=400)
+    if request.method == "DELETE":
+        DeviceToken.objects.filter(user=request.user, token=token).delete()
+        return Response(status=204)
+    platform = request.data.get("platform", "android")
+    DeviceToken.objects.update_or_create(
+        token=token, defaults={"user": request.user, "platform": platform})
+    return Response({"registered": True}, status=201)
 
 
 @api_view(["GET"])
@@ -275,8 +293,12 @@ def booking_dispute(request, pk):
 
 
 def _blocked_payload(ws):
+    from django.conf import settings
     from apps.profiles import services as av
-    return {"blocked": [d.date.isoformat() for d in av.blocked_dates(ws)]}
+    return {
+        "blocked": [d.date.isoformat() for d in av.blocked_dates(ws)],
+        "ical_url": f"{settings.SITE_URL}/calendar/{ws.ical_token}.ics",
+    }
 
 
 @api_view(["GET"])
@@ -478,6 +500,32 @@ def lead_send_quote(request, pk):
                             line_items=[{"label": title, "amount": amount}],
                             deposit_pct=deposit_pct)
     return Response(QuoteSerializer(quote).data, status=201)
+
+
+@api_view(["POST"])
+@parser_classes([MultiPartParser, FormParser])
+def gallery_upload(request, pk):
+    """Creative uploads photo files to a booking — creates/extends an in-app
+    (non-link) gallery instead of pasting a Drive/Dropbox link."""
+    ws = get_active_workspace(request.user)
+    if not ws:
+        return Response({"detail": "Only creatives can upload galleries."}, status=403)
+    b = get_object_or_404(Booking, pk=pk, workspace=ws)
+    images = request.FILES.getlist("images")
+    if not images and "image" in request.FILES:
+        images = [request.FILES["image"]]
+    if not images:
+        return Response({"detail": "Attach at least one photo."}, status=400)
+
+    gallery = b.galleries.filter(delivery_url="").first()
+    if not gallery:
+        gallery = Gallery.objects.create(
+            booking=b, title=(request.data.get("title") or "").strip() or f"{b.title} — Gallery",
+            gallery_type=Gallery.Type.PHOTO, visibility=Gallery.Visibility.PRIVATE)
+        flow.deliver_gallery(gallery)
+    for img in images:
+        Asset.objects.create(gallery=gallery, image=img, asset_type=Asset.Type.PHOTO)
+    return Response(GalleryDetailSerializer(gallery, context={"request": request}).data, status=201)
 
 
 @api_view(["GET"])
