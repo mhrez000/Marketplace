@@ -188,6 +188,62 @@ class ApiTransactionFlowTests(TestCase):
         self.assertEqual(intruder.post(reverse("api:booking_pay_deposit", args=[bid])).status_code, 404)
 
 
+class ApiCreativeProfileTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        Seed().handle(quiet=True)
+
+    def _auth(self, email):
+        c = APIClient()
+        token = c.post(reverse("api:login"), {"email": email, "password": "lens12345"}).data["token"]
+        c.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+        return c
+
+    def test_get_and_update_profile(self):
+        c = self._auth("harper@lens.test")
+        got = c.get(reverse("api:my_profile"))
+        self.assertEqual(got.status_code, 200)
+        self.assertIn("headline", got.data)
+
+        upd = c.put(reverse("api:my_profile"),
+                    {"headline": "Editorial wedding stories", "styles": ["film", "candid"],
+                     "starting_price": "2750"}, format="json")
+        self.assertEqual(upd.status_code, 200)
+        self.assertEqual(upd.data["headline"], "Editorial wedding stories")
+        self.assertEqual(upd.data["styles"], ["film", "candid"])
+        self.assertEqual(upd.data["starting_price"], "2750.00")
+
+    def test_client_has_no_profile(self):
+        self.assertEqual(self._auth("olivia@lens.test").get(reverse("api:my_profile")).status_code, 403)
+
+    def test_analytics_for_creative(self):
+        a = self._auth("harper@lens.test").get(reverse("api:analytics"))
+        self.assertEqual(a.status_code, 200)
+        for key in ("paid", "pipeline", "funnel", "trend", "profile_views"):
+            self.assertIn(key, a.data)
+
+    def test_analytics_forbidden_for_client(self):
+        self.assertEqual(self._auth("olivia@lens.test").get(reverse("api:analytics")).status_code, 403)
+
+    def test_advance_production(self):
+        c = self._auth("harper@lens.test")
+        target = next((b for b in c.get(reverse("api:bookings")).data
+                       if b["status"] in ("confirmed", "planning")), None)
+        if not target:
+            self.skipTest("no confirmed booking to advance")
+        resp = c.post(reverse("api:booking_advance", args=[target["id"]]),
+                      {"step": "shoot_completed"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["status"], "shoot_completed")
+        self.assertEqual(resp.data["creative_step"], "start_editing")
+
+    def test_advance_forbidden_for_client(self):
+        client = self._auth("olivia@lens.test")
+        bid = client.get(reverse("api:bookings")).data[0]["id"]
+        self.assertEqual(
+            client.post(reverse("api:booking_advance", args=[bid]), {"step": "shoot_completed"}).status_code, 403)
+
+
 class ApiFavouritesTests(TestCase):
     @classmethod
     def setUpTestData(cls):

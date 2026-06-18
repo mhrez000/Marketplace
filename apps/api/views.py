@@ -172,9 +172,20 @@ def _booking_payload(request, b):
     data["viewer_is_client"] = viewer_is_client
     # next_action is the client's call-to-action; only meaningful for the client.
     data["next_action"] = _next_action(b, contract) if viewer_is_client else None
+    data["creative_step"] = None if viewer_is_client else _creative_step(b)
     data["galleries"] = GallerySummarySerializer(
         b.galleries.filter(is_delivered=True), many=True).data
     return data
+
+
+def _creative_step(b):
+    """The production step a creative can take next on this booking."""
+    S = Booking.Status
+    if b.status in {S.CONFIRMED, S.PLANNING}:
+        return "shoot_completed"
+    if b.status == S.SHOOT_COMPLETED:
+        return "start_editing"
+    return None
 
 
 @api_view(["GET"])
@@ -221,6 +232,46 @@ def booking_pay_final(request, pk):
     flow.pay_final(b)
     b.refresh_from_db()
     return Response(_booking_payload(request, b))
+
+
+@api_view(["POST"])
+def booking_advance(request, pk):
+    """Creative moves a booking through production (shoot done / start editing)."""
+    ws = get_active_workspace(request.user)
+    if not ws:
+        return Response({"detail": "Only creatives can update production status."}, status=403)
+    b = get_object_or_404(Booking, pk=pk, workspace=ws)
+    step = request.data.get("step")
+    if step == "shoot_completed":
+        b.transition(Booking.Status.SHOOT_COMPLETED, force=True)
+    elif step == "start_editing":
+        b.transition(Booking.Status.EDITING, force=True)
+    else:
+        return Response({"detail": "Unknown step."}, status=400)
+    b.refresh_from_db()
+    return Response(_booking_payload(request, b))
+
+
+@api_view(["GET"])
+def analytics(request):
+    ws = get_active_workspace(request.user)
+    if not ws:
+        return Response({"detail": "You don't have a creative profile."}, status=403)
+    from apps.dashboard.analytics import workspace_analytics
+    a = workspace_analytics(ws)
+    return Response({
+        "paid": str(a["paid"]),
+        "outstanding": str(a["outstanding"]),
+        "pipeline": str(a["pipeline"]),
+        "avg_value": str(a["avg_value"]),
+        "completed": a["completed"],
+        "repeat_clients": a["repeat_clients"],
+        "repeat_pct": a["repeat_pct"],
+        "profile_views": a["profile_views"],
+        "view_to_enquiry": a["view_to_enquiry"],
+        "funnel": [{"label": f["label"], "value": f["value"]} for f in a["funnel"]],
+        "trend": [str(x) for x in a["trend"]],
+    })
 
 
 @api_view(["POST"])
@@ -276,6 +327,49 @@ def quote_decline(request, pk):
         notify(enquiry.workspace.owner, f"{request.user.email} declined your quote",
                url="/app/leads/", icon="bell")
     return Response({"status": "declined"})
+
+
+def _profile_payload(p):
+    return {
+        "business_name": p.workspace.business_name,
+        "primary_category": p.primary_category,
+        "primary_category_display": p.get_primary_category_display(),
+        "location": p.location_label,
+        "headline": p.headline,
+        "bio": p.bio,
+        "styles": p.style_list,
+        "starting_price": f"{p.starting_price:.2f}" if p.starting_price is not None else None,
+    }
+
+
+@api_view(["GET", "PUT"])
+def my_profile(request):
+    ws = get_active_workspace(request.user)
+    if not ws:
+        return Response({"detail": "You don't have a creative profile."}, status=403)
+    p = ws.profile
+    if request.method == "PUT":
+        if "headline" in request.data:
+            p.headline = (request.data.get("headline") or "").strip()
+        if "bio" in request.data:
+            p.bio = (request.data.get("bio") or "").strip()
+        if "styles" in request.data:
+            styles = request.data.get("styles")
+            if isinstance(styles, list):
+                p.styles = ", ".join(s.strip() for s in styles if str(s).strip())
+            else:
+                p.styles = (styles or "").strip()
+        if "starting_price" in request.data:
+            sp = request.data.get("starting_price")
+            if sp in (None, ""):
+                p.starting_price = None
+            else:
+                try:
+                    p.starting_price = Decimal(str(sp))
+                except (InvalidOperation, ValueError):
+                    return Response({"detail": "Enter a valid starting price."}, status=400)
+        p.save()
+    return Response(_profile_payload(p))
 
 
 @api_view(["GET"])
