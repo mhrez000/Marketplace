@@ -28,7 +28,10 @@ single naming authority.
 ```
 POST   /api/v1/auth/register/     -> { token, user }
 POST   /api/v1/auth/login/        -> { token, user }
-GET    /api/v1/auth/me/           -> user                (token)
+GET    /api/v1/auth/me/           -> user (+is_creative, workspace) (token)
+GET    /api/v1/profile/           -> creative profile     (creative)
+PUT    /api/v1/profile/           -> updated profile      (creative; headline/bio/styles/price)
+GET    /api/v1/analytics/         -> revenue/funnel/trend (creative)
 GET    /api/v1/creatives/         -> [creative]          (?q= &category= &location=)
 GET    /api/v1/creatives/{slug}/  -> creative (+packages, reviews, styles, is_favourited)
 GET    /api/v1/favourites/        -> [creative]          (token; saved creatives)
@@ -41,6 +44,7 @@ POST   /api/v1/bookings/{id}/sign/        -> booking      (token; body=name)
 POST   /api/v1/bookings/{id}/pay-deposit/ -> booking      (token; 409 if date taken)
 POST   /api/v1/bookings/{id}/pay-final/   -> booking      (token)
 POST   /api/v1/bookings/{id}/deliver/      -> booking      (creative; body=url,title)
+POST   /api/v1/bookings/{id}/advance/       -> booking      (creative; step=shoot_completed|start_editing)
 GET    /api/v1/leads/               -> [enquiry]           (creative; their leads)
 POST   /api/v1/leads/{id}/quote/    -> quote               (creative; amount, title, deposit_pct)
 POST   /api/v1/quotes/{id}/accept/  -> booking            (token; creates it)
