@@ -244,6 +244,60 @@ class ApiCreativeProfileTests(TestCase):
             client.post(reverse("api:booking_advance", args=[bid]), {"step": "shoot_completed"}).status_code, 403)
 
 
+class ApiPolishTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        Seed().handle(quiet=True)
+
+    def _auth(self, email):
+        c = APIClient()
+        token = c.post(reverse("api:login"), {"email": email, "password": "lens12345"}).data["token"]
+        c.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+        return c
+
+    def test_availability_block_unblock(self):
+        c = self._auth("harper@lens.test")
+        self.assertEqual(c.get(reverse("api:availability")).status_code, 200)
+        blocked = c.post(reverse("api:availability_block"), {"date": "2099-12-25"})
+        self.assertEqual(blocked.status_code, 200)
+        self.assertIn("2099-12-25", blocked.data["blocked"])
+        un = c.post(reverse("api:availability_unblock"), {"date": "2099-12-25"})
+        self.assertNotIn("2099-12-25", un.data["blocked"])
+
+    def test_availability_forbidden_for_client(self):
+        self.assertEqual(self._auth("olivia@lens.test").get(reverse("api:availability")).status_code, 403)
+
+    def test_review_requires_complete(self):
+        client = self._auth("olivia@lens.test")
+        # find an incomplete booking
+        bk = next((b for b in client.get(reverse("api:bookings")).data
+                   if b["status"] != "completed"), None)
+        if bk:
+            self.assertEqual(
+                client.post(reverse("api:booking_review", args=[bk["id"]]), {"rating": 5}).status_code, 400)
+
+    def test_review_on_completed_booking(self):
+        client = self._auth("olivia@lens.test")
+        bk = next((b for b in client.get(reverse("api:bookings")).data
+                   if b["status"] == "completed"), None)
+        if not bk:
+            self.skipTest("no completed booking for olivia in seed")
+        resp = client.post(reverse("api:booking_review", args=[bk["id"]]),
+                           {"rating": 5, "title": "Amazing", "body": "Loved it"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["review"]["rating"], 5)
+        self.assertFalse(resp.data["awaiting_review"])
+
+    def test_raise_dispute(self):
+        client = self._auth("olivia@lens.test")
+        bid = client.get(reverse("api:bookings")).data[0]["id"]
+        resp = client.post(reverse("api:booking_dispute", args=[bid]),
+                           {"reason": "other", "detail": "Test concern"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsNotNone(resp.data["dispute"])
+        self.assertTrue(len(resp.data["dispute_reasons"]) > 0)
+
+
 class ApiFavouritesTests(TestCase):
     @classmethod
     def setUpTestData(cls):

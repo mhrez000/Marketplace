@@ -175,6 +175,18 @@ def _booking_payload(request, b):
     data["creative_step"] = None if viewer_is_client else _creative_step(b)
     data["galleries"] = GallerySummarySerializer(
         b.galleries.filter(is_delivered=True), many=True).data
+
+    review = getattr(b, "review", None)
+    data["review"] = (
+        {"rating": review.rating, "title": review.title, "body": review.body} if review else None)
+    data["awaiting_review"] = bool(b.awaiting_review and viewer_is_client)
+
+    from apps.bookings.models import Dispute
+    dispute = b.disputes.order_by("-created_at").first()
+    data["dispute"] = (
+        {"status": dispute.status, "status_display": dispute.get_status_display(),
+         "reason": dispute.get_reason_display()} if dispute else None)
+    data["dispute_reasons"] = [{"value": v, "label": l} for v, l in Dispute.Reason.choices]
     return data
 
 
@@ -232,6 +244,68 @@ def booking_pay_final(request, pk):
     flow.pay_final(b)
     b.refresh_from_db()
     return Response(_booking_payload(request, b))
+
+
+@api_view(["POST"])
+def booking_review(request, pk):
+    b = _client_booking(request, pk)
+    if not b.is_complete:
+        return Response({"detail": "You can review once the booking is complete."}, status=400)
+    try:
+        rating = max(1, min(5, int(request.data.get("rating", 5))))
+    except (TypeError, ValueError):
+        rating = 5
+    flow.create_review(booking=b, rating=rating,
+                       title=(request.data.get("title") or "").strip(),
+                       body=(request.data.get("body") or "").strip())
+    b.refresh_from_db()
+    return Response(_booking_payload(request, b))
+
+
+@api_view(["POST"])
+def booking_dispute(request, pk):
+    b = get_object_or_404(
+        Booking.objects.filter(Q(client=request.user) | Q(workspace__owner=request.user)), pk=pk)
+    role = "client" if b.client_id == request.user.id else "creative"
+    flow.raise_dispute(b, user=request.user, role=role,
+                       reason=request.data.get("reason", "other"),
+                       detail=(request.data.get("detail") or "").strip())
+    b.refresh_from_db()
+    return Response(_booking_payload(request, b))
+
+
+def _blocked_payload(ws):
+    from apps.profiles import services as av
+    return {"blocked": [d.date.isoformat() for d in av.blocked_dates(ws)]}
+
+
+@api_view(["GET"])
+def availability(request):
+    ws = get_active_workspace(request.user)
+    if not ws:
+        return Response({"detail": "You don't have a creative profile."}, status=403)
+    return Response(_blocked_payload(ws))
+
+
+@api_view(["POST"])
+def availability_block(request):
+    from apps.profiles import services as av
+    ws = get_active_workspace(request.user)
+    if not ws:
+        return Response({"detail": "You don't have a creative profile."}, status=403)
+    if av.block(ws, request.data.get("date")) is None:
+        return Response({"detail": "That date is already booked — it can't be blocked."}, status=400)
+    return Response(_blocked_payload(ws))
+
+
+@api_view(["POST"])
+def availability_unblock(request):
+    from apps.profiles import services as av
+    ws = get_active_workspace(request.user)
+    if not ws:
+        return Response({"detail": "You don't have a creative profile."}, status=403)
+    av.unblock(ws, request.data.get("date"))
+    return Response(_blocked_payload(ws))
 
 
 @api_view(["POST"])
