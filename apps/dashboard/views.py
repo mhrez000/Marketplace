@@ -254,6 +254,13 @@ def calendar(request):
         elif action == "unblock" and on_date:
             availability.unblock(ws, on_date)
             messages.success(request, f"Unblocked {on_date}.")
+        elif action == "add_event":
+            _add_personal_event(request, ws)
+        elif action == "delete_event":
+            CalendarEvent.objects.filter(
+                pk=request.POST.get("event_id"), workspace=ws,
+                event_type=CalendarEvent.Type.CUSTOM).delete()
+            messages.success(request, "Event removed.")
         return redirect("dashboard:calendar")
 
     return render(request, "dashboard/calendar.html", {
@@ -261,6 +268,27 @@ def calendar(request):
         "blocked": availability.blocked_dates(ws),
         "today": timezone.now().date(),
     })
+
+
+def _add_personal_event(request, ws):
+    """Create a creative's own (non-booking) calendar event — a hold or reminder."""
+    from datetime import datetime
+
+    title = request.POST.get("title", "").strip()
+    date_str = request.POST.get("event_date", "").strip()
+    if not title or not date_str:
+        messages.error(request, "An event needs a title and a date.")
+        return
+    time_str = request.POST.get("event_time", "").strip() or "09:00"
+    try:
+        naive = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+    except ValueError:
+        messages.error(request, "Couldn't read that date or time.")
+        return
+    CalendarEvent.objects.create(
+        workspace=ws, event_type=CalendarEvent.Type.CUSTOM, title=title,
+        start=timezone.make_aware(naive))
+    messages.success(request, f"Added “{title}” to your calendar.")
 
 
 @login_required
@@ -274,13 +302,14 @@ def calendar_events(request):
     T = CalendarEvent.Type
     colors = {
         T.SHOOT: "#2F4156", T.EDITING_DUE: "#567C8D", T.PAYMENT_DUE: "#b7791f",
-        T.CONTRACT_DUE: "#84a4c0", T.BLOCKED: "#9aabc0",
+        T.CONTRACT_DUE: "#84a4c0", T.BLOCKED: "#9aabc0", T.CUSTOM: "#8b6f9e",
     }
-    icons = {T.SHOOT: "📷", T.EDITING_DUE: "🖼", T.PAYMENT_DUE: "💰", T.CONTRACT_DUE: "📄"}
-    # Bookings (the shoot itself) vs tasks (deadlines you owe).
+    icons = {T.SHOOT: "📷", T.EDITING_DUE: "🖼", T.PAYMENT_DUE: "💰",
+             T.CONTRACT_DUE: "📄", T.CUSTOM: "📌"}
+    # Bookings (the shoot itself) vs tasks (deadlines you owe) vs your own holds.
     category = {
         T.SHOOT: "shoot", T.EDITING_DUE: "task", T.PAYMENT_DUE: "task",
-        T.CONTRACT_DUE: "task", T.BLOCKED: "blocked",
+        T.CONTRACT_DUE: "task", T.BLOCKED: "blocked", T.CUSTOM: "personal",
     }
     out = []
     for e in CalendarEvent.objects.filter(workspace=ws).select_related("booking"):
@@ -291,13 +320,14 @@ def calendar_events(request):
             "start": e.start.isoformat(),
             "end": e.end.isoformat() if e.end else None,
             "color": colors.get(e.event_type, "#2F4156"),
-            # Shoots render as a solid block ("you're booked"); deadlines as a dot.
-            "display": "block" if cat == "shoot" else "list-item",
+            # Shoots & personal holds render as solid blocks; deadlines as a dot.
+            "display": "block" if cat in ("shoot", "personal") else "list-item",
             "classNames": [f"cat-{cat}"],
             "extendedProps": {
                 "category": cat,
                 "kind": e.get_event_type_display(),
                 "overdue": e.is_overdue,
+                "deletable": e.event_type == T.CUSTOM,
                 "bookingUrl": reverse("dashboard:booking_detail", args=[e.booking_id]) if e.booking_id else "",
                 "bookingTitle": e.booking.title if e.booking_id else "",
                 "location": e.booking.location if e.booking_id else "",

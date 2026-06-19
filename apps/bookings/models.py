@@ -102,6 +102,7 @@ class CalendarEvent(TimeStampedModel):
         PAYMENT_DUE = "payment_due", "Payment due"
         CONTRACT_DUE = "contract_due", "Contract due"
         BLOCKED = "blocked", "Blocked"
+        CUSTOM = "custom", "Personal"
 
     workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="calendar_events")
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, null=True, blank=True, related_name="events")

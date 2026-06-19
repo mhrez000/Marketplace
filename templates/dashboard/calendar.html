@@ -20,6 +20,7 @@
   /* Show/hide categories via the legend chips. */
   #cal-wrap.hide-shoot .cat-shoot,
   #cal-wrap.hide-task .cat-task,
+  #cal-wrap.hide-personal .cat-personal,
   #cal-wrap.hide-blocked .cat-blocked { display:none !important; }
   .cal-chip { display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:9999px;
     border:1px solid #e1e7ed; background:#fff; color:#2F4156; font-size:12px; font-weight:600; cursor:pointer; transition:.15s; }
@@ -39,6 +40,7 @@
       <span class="mr-1 text-xs font-semibold uppercase tracking-wide text-navy-400">Show</span>
       <button type="button" class="cal-chip" data-cat="shoot" aria-pressed="true"><span class="cal-dot" style="background:#2F4156"></span>📷 Shoots</button>
       <button type="button" class="cal-chip" data-cat="task" aria-pressed="true"><span class="cal-dot" style="background:#b7791f"></span>⏰ Deadlines</button>
+      <button type="button" class="cal-chip" data-cat="personal" aria-pressed="true"><span class="cal-dot" style="background:#8b6f9e"></span>📌 Personal</button>
       <button type="button" class="cal-chip" data-cat="blocked" aria-pressed="true"><span class="cal-dot" style="background:#9aabc0"></span>🚫 Blocked</button>
     </div>
     <div id="cal-wrap"><div id="calendar"></div></div>
@@ -48,6 +50,20 @@
   <div class="space-y-5">
     <div id="event-detail" class="card p-5">
       <p class="text-sm text-navy-400">Click an event to see its details here.</p>
+    </div>
+
+    <div class="card p-5">
+      <h2 class="text-lg">Add to calendar</h2>
+      <p class="mt-1 text-sm text-navy-400">A personal hold or reminder — only you see these.</p>
+      <form method="post" class="mt-3 space-y-2">
+        {% csrf_token %}<input type="hidden" name="action" value="add_event">
+        <input type="text" name="title" placeholder="e.g. Studio maintenance" class="input" required>
+        <div class="flex gap-2">
+          <input type="date" id="add-event-date" name="event_date" class="input" required>
+          <input type="time" name="event_time" value="09:00" class="input">
+        </div>
+        <button class="btn-primary w-full">Add event</button>
+      </form>
     </div>
 
     <div class="card p-5">
@@ -77,6 +93,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   var detail = document.getElementById('event-detail');
+  var CSRF = '{{ csrf_token }}';
   var cal = new FullCalendar.Calendar(document.getElementById('calendar'), {
     initialView: 'dayGridMonth',
     locale: 'en-au',
@@ -92,6 +109,11 @@ document.addEventListener('DOMContentLoaded', function () {
     eventTimeFormat: { hour: 'numeric', minute: '2-digit', meridiem: 'short' },
     displayEventTime: true,
     events: '{% url "dashboard:calendar_events" %}',
+    // Click a day to start a personal event on that date.
+    dateClick: function (info) {
+      var f = document.getElementById('add-event-date');
+      if (f) { f.value = info.dateStr; f.focus(); f.scrollIntoView({behavior:'smooth', block:'nearest'}); }
+    },
     eventClick: function (info) {
       var p = info.event.extendedProps;
       var start = info.event.start;
@@ -103,6 +125,13 @@ document.addEventListener('DOMContentLoaded', function () {
       if (p.location) html += '<p class="mt-1 text-sm text-navy-400">📍 ' + p.location + '</p>';
       if (p.status)   html += '<p class="mt-2"><span class="pill-sky">' + p.status + '</span></p>';
       if (p.bookingUrl) html += '<a href="' + p.bookingUrl + '" class="btn-accent mt-4 w-full">Open booking →</a>';
+      if (p.deletable) {
+        html += '<form method="post" class="mt-4" onsubmit="return confirm(\'Remove this event from your calendar?\')">'
+          + '<input type="hidden" name="csrfmiddlewaretoken" value="' + CSRF + '">'
+          + '<input type="hidden" name="action" value="delete_event">'
+          + '<input type="hidden" name="event_id" value="' + info.event.id + '">'
+          + '<button class="text-sm font-semibold text-red-500 hover:underline">Remove from calendar</button></form>';
+      }
       detail.innerHTML = html;
       detail.scrollIntoView({behavior:'smooth', block:'nearest'});
     }

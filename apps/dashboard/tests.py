@@ -183,3 +183,29 @@ class ChecklistAndDeliveriesTests(TestCase):
         r = self.client.get("/app/calendar/", SERVER_NAME="localhost")
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "multiMonthYear")  # year/month/week/day views wired
+
+    def test_personal_event_add_appears_in_feed_then_delete(self):
+        from apps.bookings.models import CalendarEvent
+        self.client.force_login(self.creative)
+        # add a personal hold
+        self.client.post("/app/calendar/", {"action": "add_event", "title": "Studio maintenance",
+                                            "event_date": "2026-07-01", "event_time": "14:30"},
+                         SERVER_NAME="localhost")
+        ev = CalendarEvent.objects.filter(workspace=self.ws, event_type=CalendarEvent.Type.CUSTOM).first()
+        self.assertIsNotNone(ev)
+        self.assertEqual(ev.title, "Studio maintenance")
+        # it surfaces in the feed as a deletable "personal" event
+        import json
+        feed = json.loads(self.client.get("/app/calendar/events/", SERVER_NAME="localhost").content)
+        mine = next(e for e in feed if str(e["id"]) == str(ev.pk))
+        self.assertEqual(mine["extendedProps"]["category"], "personal")
+        self.assertTrue(mine["extendedProps"]["deletable"])
+        # a title/date are required
+        self.client.post("/app/calendar/", {"action": "add_event", "title": "", "event_date": ""},
+                         SERVER_NAME="localhost")
+        self.assertEqual(CalendarEvent.objects.filter(workspace=self.ws,
+                         event_type=CalendarEvent.Type.CUSTOM).count(), 1)
+        # delete removes only the creative's own custom event
+        self.client.post("/app/calendar/", {"action": "delete_event", "event_id": ev.pk},
+                         SERVER_NAME="localhost")
+        self.assertFalse(CalendarEvent.objects.filter(pk=ev.pk).exists())
