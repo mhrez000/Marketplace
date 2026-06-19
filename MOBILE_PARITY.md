@@ -46,7 +46,7 @@ POST   /api/v1/creatives/{slug}/favourite/ -> {is_favourited}  (token; toggle)
 GET    /api/v1/enquiries/         -> [enquiry]           (token)
 POST   /api/v1/enquiries/         -> enquiry             (token)
 GET    /api/v1/bookings/          -> [booking]           (token)
-GET    /api/v1/bookings/{id}/     -> booking (+quote, +contract, +next_action) (token)
+GET    /api/v1/bookings/{id}/     -> booking (+quote, +contract, +next_action, +key_dates) (token)
 POST   /api/v1/bookings/{id}/sign/        -> booking      (token; body=name)
 POST   /api/v1/bookings/{id}/pay-deposit/ -> booking      (token; 409 if date taken)
 POST   /api/v1/bookings/{id}/pay-final/   -> booking      (token)
@@ -97,6 +97,14 @@ The backend is built and inert until keyed (same pattern as SMS/Stripe):
 Creatives can deliver either a link (Drive/Dropbox) **or** uploaded photos
 (`POST /bookings/{id}/upload/`, multipart). Uploaded media is served from
 `MEDIA_URL` (off the Fly volume in prod).
+
+## Booking key dates (shoots vs deadlines)
+`GET /bookings/{id}/` includes `key_dates`: the booking's shoot + deadlines
+(editing/payment/contract due), mirroring the web calendar's shoots-vs-deadlines
+split. Each item: `{type, kind, title, icon, category, date, overdue}` where
+`category` is `"shoot"` (the booked job, emphasised) or `"task"` (a deadline you
+owe). Personal/blocked holds are excluded. Rendered as a "Key dates" card on
+Android (`BookingDetailScreen`) and iOS (`BookingDetailView`) with 📷/🖼/💰/📄.
 
 ## Calendar sync
 Each workspace has a secret `ical_token`; the creative subscribes to

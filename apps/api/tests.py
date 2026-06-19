@@ -550,6 +550,29 @@ class ApiGalleryTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(len(r.data["galleries"]), 1)
 
+    def test_booking_detail_includes_key_dates(self):
+        """Shoot + deadlines mirror the web calendar; personal/blocked holds are
+        excluded. icon/category match the dashboard feed for a consistent UI."""
+        from django.utils import timezone
+        from datetime import timedelta
+        from apps.bookings.models import CalendarEvent as CE
+        CE.objects.create(workspace=self.ws, booking=self.booking, event_type=CE.Type.SHOOT,
+                          title="The shoot", start=timezone.now() + timedelta(days=10))
+        CE.objects.create(workspace=self.ws, booking=self.booking, event_type=CE.Type.EDITING_DUE,
+                          title="Edit due", start=timezone.now() - timedelta(days=1))
+        # a personal hold on the same workspace must NOT leak into a booking's key dates
+        CE.objects.create(workspace=self.ws, event_type=CE.Type.CUSTOM,
+                          title="Holiday", start=timezone.now())
+
+        kd = self.api.get(reverse("api:booking_detail", args=[str(self.booking.id)])).data["key_dates"]
+        self.assertEqual(len(kd), 2)
+        shoot = next(k for k in kd if k["category"] == "shoot")
+        self.assertEqual(shoot["icon"], "📷")
+        self.assertFalse(shoot["overdue"])
+        editing = next(k for k in kd if k["type"] == "editing_due")
+        self.assertEqual(editing["category"], "task")
+        self.assertTrue(editing["overdue"])
+
 
 class ApiMessagingTests(TestCase):
     @classmethod

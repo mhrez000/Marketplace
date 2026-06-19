@@ -206,7 +206,31 @@ def _booking_payload(request, b):
         {"status": dispute.status, "status_display": dispute.get_status_display(),
          "reason": dispute.get_reason_display()} if dispute else None)
     data["dispute_reasons"] = [{"value": v, "label": l} for v, l in Dispute.Reason.choices]
+    data["key_dates"] = _key_dates(b)
     return data
+
+
+def _key_dates(b):
+    """The booking's shoot + deadlines, mirrored from the web calendar so the
+    apps can show the same shoots-vs-deadlines treatment. icon/category match
+    the dashboard calendar feed."""
+    from apps.bookings.models import CalendarEvent
+    T = CalendarEvent.Type
+    icons = {T.SHOOT: "📷", T.EDITING_DUE: "🖼", T.PAYMENT_DUE: "💰", T.CONTRACT_DUE: "📄"}
+    category = {T.SHOOT: "shoot", T.EDITING_DUE: "task", T.PAYMENT_DUE: "task",
+                T.CONTRACT_DUE: "task"}
+    out = []
+    for e in b.events.exclude(event_type__in=[T.BLOCKED, T.CUSTOM]).order_by("start"):
+        out.append({
+            "type": e.event_type,
+            "kind": e.get_event_type_display(),
+            "title": e.title,
+            "icon": icons.get(e.event_type, "📅"),
+            "category": category.get(e.event_type, "task"),
+            "date": e.start.isoformat(),
+            "overdue": e.is_overdue,
+        })
+    return out
 
 
 def _creative_step(b):
