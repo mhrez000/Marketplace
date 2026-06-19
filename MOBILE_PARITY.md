@@ -54,6 +54,9 @@ POST   /api/v1/bookings/{id}/deliver/      -> booking      (creative; body=url,t
 POST   /api/v1/bookings/{id}/advance/       -> booking      (creative; step=shoot_completed|start_editing)
 POST   /api/v1/bookings/{id}/review/        -> booking      (client; rating/title/body)
 POST   /api/v1/bookings/{id}/dispute/       -> booking      (participant; reason/detail)
+GET    /api/v1/collaborations/        -> {pending, active}   (creative; jobs you're a sub on)
+GET    /api/v1/collaborations/{id}/    -> collaboration       (creative; REDACTED — no client)
+POST   /api/v1/collaborations/{id}/respond/ -> collaboration  (creative; accept=true|false)
 GET    /api/v1/availability/         -> {blocked}           (creative)
 POST   /api/v1/availability/block/   -> {blocked}           (creative; date)
 POST   /api/v1/availability/unblock/ -> {blocked}           (creative; date)
@@ -105,6 +108,15 @@ split. Each item: `{type, kind, title, icon, category, date, overdue}` where
 `category` is `"shoot"` (the booked job, emphasised) or `"task"` (a deadline you
 owe). Personal/blocked holds are excluded. Rendered as a "Key dates" card on
 Android (`BookingDetailScreen`) and iOS (`BookingDetailView`) with 📷/🖼/💰/📄.
+
+## Collaborators (second shooters / subcontractors)
+A creative (A) can bring another Lens creative (B) onto a booking. B's app/web
+view is **redacted**: `GET /collaborations/{id}/` returns `booking.scope` (event
+type only — the raw title embeds the client's name), date, location, who booked
+it (`booked_by`) and B's own `role`/`fee`/`is_paid` — but NEVER the client's
+identity, and there is no messaging channel to the client. B accepts/declines via
+`POST /collaborations/{id}/respond/`. A invites + pays B through Lens on the web
+booking page. Android: Collaborations screen (off Profile). iOS: CollaborationsView.
 
 ## Calendar sync
 Each workspace has a secret `ical_token`; the creative subscribes to
