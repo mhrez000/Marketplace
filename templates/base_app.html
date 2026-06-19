@@ -9,22 +9,28 @@
     <div class="flex h-16 items-center border-b border-navy-100/70 px-5">
       {% include "partials/_logo.html" %}
     </div>
-    <nav class="flex flex-col gap-1 p-3">
+    <nav class="flex flex-col gap-1 overflow-y-auto p-3">
       {% with a=active %}
       <a href="{% url 'dashboard:overview' %}" class="{% if a == 'overview' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='grid' %}Overview</a>
+
+      <p class="nav-section">Workflow</p>
       <a href="{% url 'dashboard:leads' %}" class="{% if a == 'leads' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='inbox' %}Leads</a>
       <a href="{% url 'dashboard:bookings' %}" class="{% if a == 'bookings' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='calendar' %}Bookings</a>
       <a href="{% url 'dashboard:deliveries' %}" class="{% if a == 'deliveries' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='check' %}Deliveries</a>
       <a href="{% url 'dashboard:calendar' %}" class="{% if a == 'calendar' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='calendar' %}Calendar</a>
+
+      <p class="nav-section">Clients</p>
       <a href="{% url 'messaging:inbox' %}" class="{% if a == 'messages' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='inbox' %}Messages{% if nav_unread_messages %}<span class="ml-auto inline-grid h-5 min-w-5 place-items-center rounded-full bg-teal-500 px-1.5 text-[11px] font-bold text-white">{{ nav_unread_messages }}</span>{% endif %}</a>
       <a href="{% url 'dashboard:clients' %}" class="{% if a == 'clients' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='users' %}Clients</a>
       <a href="{% url 'dashboard:analytics' %}" class="{% if a == 'analytics' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='chart' %}Analytics</a>
-      <div class="my-2 border-t border-navy-100/70"></div>
+
+      <p class="nav-section">Account</p>
       <a href="{% url 'dashboard:profile' %}" class="{% if a == 'profile' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='user' %}Profile</a>
       {% if ws %}<a href="{% url 'marketplace:profile' ws.slug %}" target="_blank" rel="noopener" class="nav-link">{% include "dashboard/_navicon.html" with name='image' %}View public page<svg viewBox="0 0 24 24" fill="none" class="ml-auto h-4 w-4 text-navy-300"><path d="M14 5h5v5M19 5l-7 7M11 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>{% endif %}
       <a href="{% url 'settings_notifications' %}" class="{% if a == 'settings' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='cog' %}Settings</a>
+
       {% if request.user.is_staff %}
-      <div class="my-2 border-t border-navy-100/70"></div>
+      <p class="nav-section">Admin</p>
       <a href="{% url 'dashboard:ops' %}" class="{% if a == 'ops' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='grid' %}Platform ops</a>
       <a href="{% url 'dashboard:broadcast' %}" class="{% if a == 'broadcast' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='megaphone' %}Broadcast</a>
       {% endif %}

@@ -85,6 +85,10 @@
   .nav-link-active {
     @apply nav-link bg-navy-700 text-white hover:bg-navy-700 hover:text-white;
   }
+  /* Sidebar group heading that separates the nav into Workflow / Clients / Account. */
+  .nav-section {
+    @apply mb-1 mt-4 px-3.5 text-[11px] font-semibold uppercase tracking-wider text-navy-300;
+  }
 
   /* Auth forms (allauth renders default widgets — style them here). */
   .auth-card input:not([type="checkbox"]):not([type="submit"]) {
