@@ -138,6 +138,60 @@
       </div>
     </div>
 
+    <!-- Collaborators (second shooters / subcontractors) -->
+    <div class="card p-6">
+      <h2 class="text-lg">Collaborators</h2>
+      <p class="mt-1 text-sm text-navy-400">Bring in another creative. They'll see the job details but not the client's contact info, and can't message your client.</p>
+
+      <div class="mt-3 space-y-2">
+        {% for c in collaborators %}
+        <div class="rounded-xl border border-navy-100 p-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="font-semibold text-navy-700">{{ c.workspace.business_name }}</p>
+              <p class="text-xs text-navy-400">{{ c.role }}{% if c.fee %} · ${{ c.fee|floatformat:0 }}{% endif %}</p>
+            </div>
+            {% if c.status == 'invited' %}<span class="pill-beige">Invited</span>
+            {% elif c.status == 'accepted' %}<span class="pill-verified">Accepted</span>
+            {% elif c.status == 'declined' %}<span class="pill bg-beige-200 text-navy-600">Declined</span>{% endif %}
+          </div>
+          {% if c.status == 'accepted' %}
+          <div class="mt-2 flex items-center justify-between gap-2 border-t border-navy-100 pt-2">
+            {% if c.is_paid %}<span class="text-xs font-semibold text-teal-600">✓ Paid ${{ c.fee|floatformat:2 }}</span>
+            {% elif c.fee %}<form method="post"><input type="hidden" name="action" value="pay_collaborator"><input type="hidden" name="collab_id" value="{{ c.pk }}">{% csrf_token %}<button class="btn-accent !py-1 !px-3 text-xs">Pay ${{ c.fee|floatformat:0 }}</button></form>
+            {% else %}<span class="text-xs text-navy-400">No fee set</span>{% endif %}
+            <form method="post" onsubmit="return confirm('Remove this collaborator?')"><input type="hidden" name="action" value="remove_collaborator"><input type="hidden" name="collab_id" value="{{ c.pk }}">{% csrf_token %}<button class="text-xs font-semibold text-red-500 hover:underline">Remove</button></form>
+          </div>
+          {% elif c.status == 'invited' %}
+          <div class="mt-2 border-t border-navy-100 pt-2 text-right">
+            <form method="post" onsubmit="return confirm('Withdraw this invite?')"><input type="hidden" name="action" value="remove_collaborator"><input type="hidden" name="collab_id" value="{{ c.pk }}">{% csrf_token %}<button class="text-xs font-semibold text-red-500 hover:underline">Withdraw</button></form>
+          </div>
+          {% endif %}
+        </div>
+        {% empty %}<p class="text-sm text-navy-400">No collaborators yet.</p>{% endfor %}
+      </div>
+
+      {% if pickable_creatives %}
+      <div x-data="{ open: false }" class="mt-3">
+        <button type="button" @click="open = !open" class="btn-ghost w-full !py-2 text-sm" x-text="open ? 'Cancel' : '+ Add a collaborator'">+ Add a collaborator</button>
+        <form x-show="open" x-cloak method="post" class="mt-3 space-y-2 border-t border-navy-100 pt-3">
+          {% csrf_token %}<input type="hidden" name="action" value="add_collaborator">
+          <div><label class="label">Creative</label>
+            <select name="collab_workspace" class="input" required>
+              <option value="">Choose a Lens creative…</option>
+              {% for w in pickable_creatives %}<option value="{{ w.pk }}">{{ w.business_name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="grid gap-2 sm:grid-cols-2">
+            <div><label class="label">Role</label><input name="role" class="input" placeholder="Second shooter"></div>
+            <div><label class="label">Fee ($)</label><input name="fee" type="number" step="0.01" class="input" placeholder="0"></div>
+          </div>
+          <button class="btn-accent w-full">Send invite</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+
     {% if dispute or booking.is_confirmed %}
       {% include "partials/_dispute.html" %}
     {% endif %}

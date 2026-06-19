@@ -1,0 +1,46 @@
+{% extends "base_app.html" %}
+{% block title %}Collaborations — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<h1 class="text-2xl font-600">Collaborations</h1>
+<p class="mt-1 text-sm text-navy-500">Jobs other creatives have brought you onto — as a second shooter or subcontractor. You see the logistics, not their client.</p>
+
+<!-- Pending invites -->
+{% if pending %}
+<h2 class="mt-6 text-lg">Invites</h2>
+<div class="mt-3 space-y-3">
+  {% for c in pending %}
+  <div class="card p-5">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <p class="font-semibold text-navy-700">{{ c.booking.workspace.business_name }} invited you</p>
+        <p class="text-sm text-navy-400">{{ c.role }}{% if c.fee %} · ${{ c.fee|floatformat:0 }}{% endif %} · {{ c.booking.event_date|date:"d M Y"|default:"date TBC" }}{% if c.booking.location %} · {{ c.booking.location }}{% endif %}</p>
+      </div>
+      <span class="pill-beige">Invited</span>
+    </div>
+    <div class="mt-3 flex gap-2 border-t border-navy-100 pt-3">
+      <form method="post"><input type="hidden" name="action" value="accept"><input type="hidden" name="collab_id" value="{{ c.pk }}">{% csrf_token %}<button class="btn-accent">Accept</button></form>
+      <form method="post"><input type="hidden" name="action" value="decline"><input type="hidden" name="collab_id" value="{{ c.pk }}">{% csrf_token %}<button class="btn-ghost">Decline</button></form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Active collaborations -->
+<h2 class="mt-8 text-lg">Active</h2>
+<div class="mt-3 grid gap-4 sm:grid-cols-2">
+  {% for c in active_collabs %}
+  <a href="{% url 'dashboard:collaboration_detail' c.pk %}" class="card-hover p-5">
+    <div class="flex items-center justify-between">
+      <p class="font-semibold text-navy-700">{{ c.booking.workspace.business_name }}</p>
+      {% if c.is_paid %}<span class="pill-verified">Paid</span>{% elif c.fee %}<span class="pill-beige">${{ c.fee|floatformat:0 }} due</span>{% endif %}
+    </div>
+    <p class="mt-1 text-sm text-navy-400">{{ c.role }}</p>
+    <p class="mt-2 text-sm text-navy-500">{{ c.booking.event_date|date:"d M Y"|default:"date TBC" }}{% if c.booking.location %} · {{ c.booking.location }}{% endif %}</p>
+  </a>
+  {% empty %}
+  <p class="text-sm text-navy-400">No active collaborations yet. When another creative adds you to a booking, it shows up here.</p>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -208,7 +208,13 @@ def booking_detail(request, pk):
         return redirect("dashboard:booking_detail", pk=booking.pk)
 
     from apps.payments.services import compute_refund
-    from apps.bookings.models import Dispute
+    from apps.bookings.models import BookingCollaborator, Dispute
+    collaborators = booking.collaborators.exclude(
+        status=BookingCollaborator.Status.REMOVED).select_related("workspace")
+    # Creatives A can invite: any other published workspace not already on the booking.
+    on_booking = booking.collaborators.values_list("workspace_id", flat=True)
+    pickable = (Workspace.objects.filter(is_published=True)
+                .exclude(pk=ws.pk).exclude(pk__in=on_booking).order_by("business_name"))
     return render(request, "dashboard/booking_detail.html", {
         "active": "bookings", "ws": ws, "booking": booking, "contract": contract,
         "invoices": invoices, "galleries": galleries, "thread": thread,
@@ -216,6 +222,7 @@ def booking_detail(request, pk):
         "S": Booking.Status, "refund": compute_refund(booking),
         "dispute": booking.disputes.order_by("-created_at").first(),
         "dispute_reasons": Dispute.Reason.choices,
+        "collaborators": collaborators, "pickable_creatives": pickable,
     })
 
 
@@ -267,6 +274,90 @@ def _handle_creative_action(request, booking, contract, action):
             Message.objects.create(thread=thread, sender=request.user, body=body)
             if thread.enquiry:  # creative replying counts as a response
                 thread.enquiry.mark_responded()
+    elif action == "add_collaborator":
+        _add_collaborator(request, booking)
+    elif action == "pay_collaborator":
+        _collab_action(request, booking, flow.pay_collaborator, "Collaborator paid.")
+    elif action == "remove_collaborator":
+        _collab_action(request, booking, flow.remove_collaborator, "Collaborator removed.")
+
+
+def _add_collaborator(request, booking):
+    ws_id = request.POST.get("collab_workspace")
+    target = Workspace.objects.filter(pk=ws_id, is_published=True).first()
+    if not target:
+        messages.error(request, "Pick a creative to collaborate with.")
+        return
+    fee_raw = (request.POST.get("fee") or "0").strip()
+    try:
+        fee = Decimal(fee_raw or "0")
+    except Exception:
+        messages.error(request, "Enter a valid fee amount.")
+        return
+    try:
+        flow.invite_collaborator(booking, target, role=request.POST.get("role", "").strip(),
+                                 fee=fee, by=request.user)
+    except flow.CollaborationError as e:
+        messages.error(request, str(e))
+        return
+    messages.success(request, f"Invited {target.business_name} to collaborate.")
+
+
+def _collab_action(request, booking, fn, ok_msg):
+    from apps.bookings.models import BookingCollaborator
+    collab = BookingCollaborator.objects.filter(
+        pk=request.POST.get("collab_id"), booking=booking).first()
+    if not collab:
+        return
+    try:
+        fn(collab)
+    except flow.CollaborationError as e:
+        messages.error(request, str(e))
+        return
+    messages.success(request, ok_msg)
+
+
+@login_required
+def collaborations(request):
+    """B's side: invites to accept/decline + active collaborations, across every
+    workspace this user owns. The mirror of A managing collaborators on a booking."""
+    from apps.bookings.models import BookingCollaborator
+    ws_ids = list(request.user.owned_workspaces.values_list("id", flat=True))
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        collab = BookingCollaborator.objects.filter(
+            pk=request.POST.get("collab_id"), workspace_id__in=ws_ids).first()
+        if collab and collab.is_pending and action in ("accept", "decline"):
+            flow.respond_collaboration(collab, accept=(action == "accept"))
+            messages.success(request, "Collaboration accepted." if action == "accept"
+                             else "Invite declined.")
+        return redirect("dashboard:collaborations")
+
+    qs = (BookingCollaborator.objects.filter(workspace_id__in=ws_ids)
+          .exclude(status=BookingCollaborator.Status.REMOVED)
+          .select_related("booking", "booking__workspace").order_by("-created_at"))
+    return render(request, "dashboard/collaborations.html", {
+        "active": "collaborations", "ws": _require_workspace(request),
+        "pending": [c for c in qs if c.is_pending],
+        "active_collabs": [c for c in qs if c.is_active],
+    })
+
+
+@login_required
+def collaboration_detail(request, pk):
+    """B's REDACTED view of a booking they're collaborating on: the job logistics
+    (date, location, scope), who hired them, and their own fee — but never the
+    client's identity, and with no way to message the client."""
+    from apps.bookings.models import BookingCollaborator
+    ws_ids = list(request.user.owned_workspaces.values_list("id", flat=True))
+    collab = get_object_or_404(
+        BookingCollaborator.objects.select_related("booking", "booking__workspace"),
+        pk=pk, workspace_id__in=ws_ids, status=BookingCollaborator.Status.ACCEPTED)
+    return render(request, "dashboard/collaboration_detail.html", {
+        "active": "collaborations", "ws": _require_workspace(request),
+        "collab": collab, "booking": collab.booking,
+    })
 
 
 @login_required

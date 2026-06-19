@@ -42,6 +42,13 @@ EVENTS = {
                          subject="A lead is waiting", cta="Respond now", icon="alert"),
     "dispute_raised": dict(category=TRANSACTIONAL, channels=["in_app", "email"],
                            subject="A dispute was raised", cta="View details", icon="alert"),
+    # ── Creative-to-creative collaboration ─────────────────────────────────
+    "collab_invited": dict(category=TRANSACTIONAL, channels=["in_app", "email"],
+                           subject="You've been invited to collaborate", cta="View invite", icon="users"),
+    "collab_response": dict(category=TRANSACTIONAL, channels=["in_app", "email"],
+                            subject="Your collaboration invite was answered", cta="View booking", icon="users"),
+    "collab_paid": dict(category=TRANSACTIONAL, channels=["in_app", "email"],
+                        subject="You've been paid for a collaboration", cta="View collaboration", icon="card"),
     # ── Digest ─────────────────────────────────────────────────────────────
     "message_digest": dict(category=DIGEST, channels=["in_app", "email"],
                            subject="You have new messages", cta="Open messages", icon="inbox"),

@@ -20,8 +20,12 @@ def notifications(request):
     unread_messages = (Message.objects.filter(read_at__isnull=True)
                        .filter(Q(thread__client=user) | Q(thread__workspace__owner=user))
                        .exclude(sender=user).count())
+    from apps.bookings.models import BookingCollaborator
+    pending_collabs = BookingCollaborator.objects.filter(
+        workspace__owner=user, status=BookingCollaborator.Status.INVITED).count()
     return {
         "nav_notifications": user.notifications.all()[:10],
         "nav_unread_count": user.notifications.filter(is_read=False).count(),
         "nav_unread_messages": unread_messages,
+        "nav_pending_collabs": pending_collabs,
     }

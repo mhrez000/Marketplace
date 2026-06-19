@@ -13,6 +13,7 @@
       {% with a=active %}
       <a href="{% url 'dashboard:overview' %}" class="{% if a == 'overview' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='grid' %}Overview</a>
       <a href="{% url 'dashboard:hire' %}" class="{% if a == 'hire' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='search' %}Hire creatives</a>
+      <a href="{% url 'dashboard:collaborations' %}" class="{% if a == 'collaborations' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='users' %}Collaborations{% if nav_pending_collabs %}<span class="ml-auto inline-grid h-5 min-w-5 place-items-center rounded-full bg-teal-500 px-1.5 text-[11px] font-bold text-white">{{ nav_pending_collabs }}</span>{% endif %}</a>
 
       <p class="nav-section">Workflow</p>
       <a href="{% url 'dashboard:leads' %}" class="{% if a == 'leads' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='inbox' %}Leads</a>

@@ -22,7 +22,7 @@ from apps.profiles import services as availability
 from apps.profiles.models import Availability
 from apps.reviews.models import Review
 
-from .models import Booking, CalendarEvent
+from .models import Booking, BookingCollaborator, CalendarEvent
 
 
 class DateUnavailable(Exception):
@@ -334,6 +334,67 @@ def create_review(*, booking, rating, title="", body=""):
     )
     notify(booking.workspace.owner, f"New {rating}★ review from {booking.client.email}", url="/app/", icon="bell")
     return review
+
+
+# ── Creative-to-creative collaboration ─────────────────────────────────────
+class CollaborationError(Exception):
+    """Raised for invalid collaboration actions (e.g. inviting yourself)."""
+
+
+def invite_collaborator(booking, workspace, *, role="Second shooter", fee=0, by=None):
+    """A invites another creative's workspace (B) onto this booking. B's owner is
+    notified and can accept/decline. Returns the BookingCollaborator."""
+    if workspace.id == booking.workspace_id:
+        raise CollaborationError("You can't add your own workspace as a collaborator.")
+    collab, created = BookingCollaborator.objects.update_or_create(
+        booking=booking, workspace=workspace,
+        defaults={"role": role or "Second shooter", "fee": fee or 0,
+                  "status": BookingCollaborator.Status.INVITED,
+                  "invited_by": by, "responded_at": None, "paid_at": None, "payment_ref": ""},
+    )
+    dispatch("collab_invited", workspace.owner,
+             verb=f"{booking.workspace.business_name} invited you to collaborate on a {booking.event_date:%d %b %Y} booking"
+                  if booking.event_date else f"{booking.workspace.business_name} invited you to collaborate on a booking",
+             url="/app/collaborations/")
+    return collab
+
+
+def respond_collaboration(collab, *, accept):
+    """B accepts or declines the invite. Notifies A either way."""
+    collab.status = (BookingCollaborator.Status.ACCEPTED if accept
+                     else BookingCollaborator.Status.DECLINED)
+    collab.responded_at = timezone.now()
+    collab.save(update_fields=["status", "responded_at", "updated_at"])
+    verb = (f"{collab.workspace.business_name} "
+            f"{'accepted' if accept else 'declined'} your collaboration invite")
+    if collab.invited_by_id:
+        dispatch("collab_response", collab.invited_by, verb=verb,
+                 url=f"/app/bookings/{collab.booking_id}/")
+    return collab
+
+
+def pay_collaborator(collab):
+    """A pays B's collaboration fee through Lens (test gateway — no real charge).
+    Marks it paid and notifies B."""
+    if not collab.is_active:
+        raise CollaborationError("You can only pay a collaborator who has accepted.")
+    if collab.is_paid:
+        return collab
+    import uuid
+    collab.paid_at = timezone.now()
+    collab.payment_ref = f"test_{uuid.uuid4().hex[:18]}"
+    collab.save(update_fields=["paid_at", "payment_ref", "updated_at"])
+    dispatch("collab_paid", collab.workspace.owner,
+             verb=f"You were paid ${collab.fee:.2f} for collaborating with {collab.booking.workspace.business_name}",
+             url="/app/collaborations/")
+    return collab
+
+
+def remove_collaborator(collab):
+    """A removes B from the booking (revokes their access)."""
+    collab.status = BookingCollaborator.Status.REMOVED
+    collab.save(update_fields=["status", "updated_at"])
+    return collab
 
 
 DEFAULT_CONTRACT = """SERVICE AGREEMENT

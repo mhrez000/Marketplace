@@ -238,3 +238,108 @@ class HireTabTests(TestCase):
         self.assertContains(self.client.get("/app/hire/", SERVER_NAME="localhost"), "Other Studio")
         # ...and it must NOT leak into my own sell-side Leads (those filter on workspace=mine)
         self.assertNotContains(self.client.get("/app/leads/", SERVER_NAME="localhost"), "Other Studio")
+
+
+class CollaboratorTests(TestCase):
+    """A brings B onto a booking. B sees logistics + their fee, never the client's
+    identity, and has no way to message the client. A pays B through Lens."""
+
+    def setUp(self):
+        # Creative A with a real booking for a client
+        self.a = User.objects.create_user(email="a@t.com", password="x")
+        self.a_ws = Workspace.objects.create(owner=self.a, business_name="Studio A", is_published=True)
+        CreativeProfile.objects.create(workspace=self.a_ws, primary_category="events")
+        self.customer = User.objects.create_user(email="secret-customer@example.com",
+                                                  password="x", first_name="Priya", last_name="Client")
+        ContractTemplate.objects.create(name="Std", contract_type="events", body=flow.DEFAULT_CONTRACT)
+        svc = Service.objects.create(workspace=self.a_ws, category="events", title="E")
+        pkg = Package.objects.create(service=svc, name="Day", base_price=Decimal("3000"))
+        e = flow.create_enquiry(client=self.customer, workspace=self.a_ws,
+                                event_type="events", message="hi", location="Fitzroy Town Hall")
+        q = flow.send_quote(enquiry=e, title="Wedding", package=pkg,
+                            line_items=[{"label": "Coverage", "amount": 3000}])
+        self.booking = flow.accept_quote(q)
+        # Scope title is creative-authored and shown to B; keep client names OUT of it.
+        self.booking.title = "Full-day wedding coverage"; self.booking.location = "Fitzroy Town Hall"
+        self.booking.save()
+
+        # Creative B (the second shooter)
+        self.b = User.objects.create_user(email="b@t.com", password="x")
+        self.b_ws = Workspace.objects.create(owner=self.b, business_name="Studio B", is_published=True)
+        CreativeProfile.objects.create(workspace=self.b_ws, primary_category="events")
+
+    def _invite(self, fee="500"):
+        self.client.force_login(self.a)
+        self.client.post(f"/app/bookings/{self.booking.pk}/",
+                         {"action": "add_collaborator", "collab_workspace": self.b_ws.pk,
+                          "role": "Second shooter", "fee": fee}, SERVER_NAME="localhost")
+        from apps.bookings.models import BookingCollaborator
+        return BookingCollaborator.objects.get(booking=self.booking, workspace=self.b_ws)
+
+    def test_full_invite_accept_pay_flow(self):
+        from apps.bookings.models import BookingCollaborator
+        c = self._invite()
+        self.assertEqual(c.status, BookingCollaborator.Status.INVITED)
+
+        # B sees the invite and accepts
+        self.client.force_login(self.b)
+        self.assertContains(self.client.get("/app/collaborations/", SERVER_NAME="localhost"), "Studio A")
+        self.client.post("/app/collaborations/",
+                         {"action": "accept", "collab_id": c.pk}, SERVER_NAME="localhost")
+        c.refresh_from_db()
+        self.assertEqual(c.status, BookingCollaborator.Status.ACCEPTED)
+
+        # A pays B through Lens
+        self.client.force_login(self.a)
+        self.client.post(f"/app/bookings/{self.booking.pk}/",
+                         {"action": "pay_collaborator", "collab_id": c.pk}, SERVER_NAME="localhost")
+        c.refresh_from_db()
+        self.assertTrue(c.is_paid)
+        self.assertTrue(c.payment_ref)
+
+    def test_B_never_sees_client_identity_or_a_message_box(self):
+        c = self._invite()
+        self.client.force_login(self.b)
+        c.status = c.Status.ACCEPTED; c.save()
+        r = self.client.get(f"/app/collaborations/{c.pk}/", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 200)
+        # logistics ARE shown
+        self.assertContains(r, "Fitzroy Town Hall")
+        self.assertContains(r, "Studio A")          # who hired them
+        self.assertContains(r, "Second shooter")
+        # client identity is NEVER shown
+        self.assertNotContains(r, "secret-customer@example.com")
+        self.assertNotContains(r, "Priya")
+        # and there's no message-the-client box
+        self.assertNotContains(r, 'name="action" value="send_message"')
+
+    def test_pending_invite_does_not_grant_detail_access(self):
+        c = self._invite()  # still INVITED
+        self.client.force_login(self.b)
+        # the redacted detail is gated on ACCEPTED
+        self.assertEqual(self.client.get(f"/app/collaborations/{c.pk}/", SERVER_NAME="localhost").status_code, 404)
+
+    def test_other_creative_cannot_access_collaboration(self):
+        c = self._invite()
+        c.status = c.Status.ACCEPTED; c.save()
+        stranger = User.objects.create_user(email="stranger@t.com", password="x")
+        Workspace.objects.create(owner=stranger, business_name="Studio X", is_published=True)
+        self.client.force_login(stranger)
+        self.assertEqual(self.client.get(f"/app/collaborations/{c.pk}/", SERVER_NAME="localhost").status_code, 404)
+
+    def test_cannot_invite_own_workspace(self):
+        self.client.force_login(self.a)
+        self.client.post(f"/app/bookings/{self.booking.pk}/",
+                         {"action": "add_collaborator", "collab_workspace": self.a_ws.pk,
+                          "role": "x", "fee": "0"}, SERVER_NAME="localhost")
+        from apps.bookings.models import BookingCollaborator
+        self.assertFalse(BookingCollaborator.objects.filter(workspace=self.a_ws).exists())
+
+    def test_decline_path(self):
+        from apps.bookings.models import BookingCollaborator
+        c = self._invite()
+        self.client.force_login(self.b)
+        self.client.post("/app/collaborations/",
+                         {"action": "decline", "collab_id": c.pk}, SERVER_NAME="localhost")
+        c.refresh_from_db()
+        self.assertEqual(c.status, BookingCollaborator.Status.DECLINED)

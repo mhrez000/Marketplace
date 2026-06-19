@@ -124,6 +124,50 @@ class CalendarEvent(TimeStampedModel):
         return self.event_type in {self.Type.PAYMENT_DUE, self.Type.EDITING_DUE, self.Type.CONTRACT_DUE} and self.start < timezone.now()
 
 
+class BookingCollaborator(TimeStampedModel):
+    """A second creative (B) brought onto another creative's (A) booking — e.g. a
+    second shooter or subcontractor. B sees the job logistics (date, location,
+    scope) and their own fee, but NEVER the client's identity, and has no channel
+    to the client. A invites; B accepts/declines; A pays B's fee through Lens."""
+
+    class Status(models.TextChoices):
+        INVITED = "invited", "Invited"
+        ACCEPTED = "accepted", "Accepted"
+        DECLINED = "declined", "Declined"
+        REMOVED = "removed", "Removed"
+
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name="collaborators")
+    # The collaborating creative's workspace (its owner is the user who sees this).
+    workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="collaborations")
+    role = models.CharField(max_length=80, default="Second shooter")
+    fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.INVITED, db_index=True)
+    invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+                                   null=True, blank=True, related_name="collaborations_sent")
+    responded_at = models.DateTimeField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    payment_ref = models.CharField(max_length=64, blank=True)
+
+    class Meta:
+        unique_together = ("booking", "workspace")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.workspace.business_name} on {self.booking} ({self.status})"
+
+    @property
+    def is_active(self):
+        return self.status == self.Status.ACCEPTED
+
+    @property
+    def is_pending(self):
+        return self.status == self.Status.INVITED
+
+    @property
+    def is_paid(self):
+        return self.paid_at is not None
+
+
 class Dispute(TimeStampedModel):
     """A dispute raised on a booking by either party, resolved by an admin
     (build plan §18). Evidence = the booking's contract, messages and delivery

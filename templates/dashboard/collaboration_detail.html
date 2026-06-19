@@ -1,0 +1,48 @@
+{% extends "base_app.html" %}
+{% block title %}Collaboration — {{ BRAND_NAME }}{% endblock %}
+
+{% block main %}
+<a href="{% url 'dashboard:collaborations' %}" class="text-sm text-teal-600 hover:underline">← Back to collaborations</a>
+
+<div class="mt-4 flex flex-wrap items-start justify-between gap-3">
+  <div>
+    <h1 class="text-2xl font-600">{{ booking.title|default:"Collaboration" }}</h1>
+    <p class="mt-1 text-sm text-navy-500">With {{ booking.workspace.business_name }} · {{ booking.event_date|date:"d M Y"|default:"date TBC" }}</p>
+  </div>
+  {% include "partials/_status.html" with status=booking.status label=booking.get_status_display %}
+</div>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    <!-- Job details (NO client identity is ever shown here) -->
+    <div class="card p-6">
+      <h2 class="text-lg">Job details</h2>
+      <div class="mt-3 space-y-2.5 text-sm">
+        <div class="flex justify-between"><span class="text-navy-500">Booked by</span><span class="font-medium text-navy-700">{{ booking.workspace.business_name }}</span></div>
+        <div class="flex justify-between"><span class="text-navy-500">Date</span><span class="font-medium text-navy-700">{{ booking.event_date|date:"l, d M Y"|default:"Date TBC" }}</span></div>
+        <div class="flex justify-between"><span class="text-navy-500">Location</span><span class="font-medium text-navy-700">{{ booking.location|default:"—" }}</span></div>
+        {% if booking.title %}<div class="flex justify-between"><span class="text-navy-500">Scope</span><span class="font-medium text-navy-700">{{ booking.title }}</span></div>{% endif %}
+      </div>
+      <div class="mt-4 flex items-start gap-2 rounded-xl bg-beige-100 p-3">
+        <span class="text-navy-400">🔒</span>
+        <p class="text-xs text-navy-500">The client's contact details are private to {{ booking.workspace.business_name }}. Coordinate through them for anything client-facing.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Your role & payout -->
+  <div class="space-y-6">
+    <div class="card p-6">
+      <h2 class="text-lg">Your collaboration</h2>
+      <div class="mt-3 space-y-2 text-sm">
+        <div class="flex justify-between"><span class="text-navy-500">Role</span><span class="font-medium text-navy-700">{{ collab.role }}</span></div>
+        <div class="flex justify-between"><span class="text-navy-500">Fee</span><span class="font-semibold text-navy-700">${{ collab.fee|floatformat:2 }}</span></div>
+        <div class="flex justify-between"><span class="text-navy-500">Payment</span>
+          {% if collab.is_paid %}<span class="pill-verified">Paid</span>{% else %}<span class="pill-beige">Awaiting payment</span>{% endif %}
+        </div>
+      </div>
+      {% if not collab.is_paid %}<p class="mt-3 text-xs text-navy-400">{{ booking.workspace.business_name }} pays this through Lens once the work's done.</p>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
