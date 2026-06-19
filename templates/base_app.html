@@ -48,10 +48,10 @@
       <button @click="sidebar = !sidebar" class="grid h-10 w-10 place-items-center rounded-xl text-navy-700 hover:bg-white lg:hidden" aria-label="Menu">
         <svg viewBox="0 0 24 24" fill="none" class="h-6 w-6"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       </button>
-      <div class="hidden flex-1 items-center gap-2 rounded-full bg-white px-4 py-2 shadow-soft ring-1 ring-navy-100 sm:flex sm:max-w-sm">
+      <form method="get" action="{% url 'dashboard:search' %}" class="hidden flex-1 items-center gap-2 rounded-full bg-white px-4 py-2 shadow-soft ring-1 ring-navy-100 sm:flex sm:max-w-sm">
         <svg viewBox="0 0 24 24" fill="none" class="h-4 w-4 text-navy-300"><path d="M21 21l-4.3-4.3M11 19a8 8 0 100-16 8 8 0 000 16z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        <input type="text" placeholder="Search leads, clients, bookings…" class="w-full border-0 bg-transparent text-sm focus:outline-none focus:ring-0">
-      </div>
+        <input type="search" name="q" placeholder="Search leads, clients, bookings…" class="w-full border-0 bg-transparent text-sm focus:outline-none focus:ring-0">
+      </form>
       <div class="ml-auto flex items-center gap-3">
         <div x-data="{ bell: false }" class="relative">
           <button @click="bell = !bell" class="relative grid h-10 w-10 place-items-center rounded-full bg-white shadow-soft ring-1 ring-navy-100">

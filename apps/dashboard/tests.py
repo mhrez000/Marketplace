@@ -83,6 +83,20 @@ class ChecklistAndDeliveriesTests(TestCase):
         self.client.post("/app/checklist/", {"action": "delete", "id": t.pk}, SERVER_NAME="localhost")
         self.assertEqual(self.ws.task_templates.count(), 0)
 
+    def test_search_finds_leads(self):
+        from apps.bookings import services as flow
+        from apps.contracts.models import ContractTemplate
+        ContractTemplate.objects.create(name="Std", contract_type="events", body=flow.DEFAULT_CONTRACT)
+        client = User.objects.create_user(email="finder@t.com", password="x", first_name="Findable")
+        flow.create_enquiry(client=client, workspace=self.ws, event_type="events", message="hi")
+
+        self.client.force_login(self.creative)
+        r = self.client.get("/app/search/", {"q": "Findable"}, SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "finder@t.com")
+        # empty query just shows the prompt
+        self.assertEqual(self.client.get("/app/search/", SERVER_NAME="localhost").status_code, 200)
+
     def test_package_add_edit_delete(self):
         from apps.profiles.models import Package
         self.client.force_login(self.creative)

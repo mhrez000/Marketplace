@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -519,6 +519,28 @@ def analytics(request):
     return render(request, "dashboard/analytics.html", {
         "active": "analytics", "ws": ws, "a": workspace_analytics(ws),
     })
+
+
+@login_required
+def search(request):
+    """The header search — finds the creative's leads, clients and bookings."""
+    ws = _require_workspace(request)
+    if not ws:
+        return redirect("dashboard:onboarding")
+    q = request.GET.get("q", "").strip()
+    leads = clients = bookings = []
+    if q:
+        from apps.crm.models import Client
+        person = (Q(client__first_name__icontains=q) | Q(client__last_name__icontains=q)
+                  | Q(client__email__icontains=q))
+        leads = (Enquiry.objects.filter(workspace=ws).filter(person | Q(message__icontains=q))
+                 .select_related("client").order_by("-created_at")[:12])
+        clients = (Client.objects.filter(workspace=ws)
+                   .filter(Q(name__icontains=q) | Q(email__icontains=q)).order_by("name")[:12])
+        bookings = (Booking.objects.filter(workspace=ws).filter(person | Q(title__icontains=q))
+                    .select_related("client").order_by("-created_at")[:12])
+    return render(request, "dashboard/search.html", {
+        "active": "", "ws": ws, "q": q, "leads": leads, "clients": clients, "bookings": bookings})
 
 
 @login_required
