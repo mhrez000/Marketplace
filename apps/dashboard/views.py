@@ -168,7 +168,7 @@ def booking_detail(request, pk):
     contract = getattr(booking, "contract", None)
     invoices = booking.invoices.all()
     galleries = booking.galleries.prefetch_related("assets")
-    thread = booking.threads.first() or booking.enquiry.threads.first() if booking.enquiry else None
+    thread = booking.threads.first() or (booking.enquiry.threads.first() if booking.enquiry else None)
 
     if request.method == "POST":
         action = request.POST.get("action")
