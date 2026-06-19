@@ -12,6 +12,19 @@
   .fc .fc-button-primary:not(:disabled).fc-button-active { background:#567C8D; border-color:#567C8D; }
   .fc .fc-toolbar-title { font-family:'Fraunces',serif; color:#2F4156; }
   .fc-event { cursor:pointer; }
+  /* Shoots = solid rounded block (you're booked). */
+  .fc .fc-daygrid-block-event { border-radius:6px; padding:1px 2px; font-weight:600; }
+  /* Deadlines = a clear dot + label (a reminder). */
+  .fc .cat-task .fc-daygrid-event-dot { border-width:5px; }
+  .fc .cat-task.fc-event { font-weight:500; }
+  /* Show/hide categories via the legend chips. */
+  #cal-wrap.hide-shoot .cat-shoot,
+  #cal-wrap.hide-task .cat-task,
+  #cal-wrap.hide-blocked .cat-blocked { display:none !important; }
+  .cal-chip { display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:9999px;
+    border:1px solid #e1e7ed; background:#fff; color:#2F4156; font-size:12px; font-weight:600; cursor:pointer; transition:.15s; }
+  .cal-chip[aria-pressed="false"] { opacity:.45; text-decoration:line-through; }
+  .cal-dot { width:10px; height:10px; border-radius:9999px; display:inline-block; }
 </style>
 {% endblock %}
 
@@ -22,7 +35,13 @@
 <div class="mt-6 grid gap-6 lg:grid-cols-3">
   <!-- Calendar -->
   <div class="card p-4 sm:p-5 lg:col-span-2">
-    <div id="calendar"></div>
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+      <span class="mr-1 text-xs font-semibold uppercase tracking-wide text-navy-400">Show</span>
+      <button type="button" class="cal-chip" data-cat="shoot" aria-pressed="true"><span class="cal-dot" style="background:#2F4156"></span>📷 Shoots</button>
+      <button type="button" class="cal-chip" data-cat="task" aria-pressed="true"><span class="cal-dot" style="background:#b7791f"></span>⏰ Deadlines</button>
+      <button type="button" class="cal-chip" data-cat="blocked" aria-pressed="true"><span class="cal-dot" style="background:#9aabc0"></span>🚫 Blocked</button>
+    </div>
+    <div id="cal-wrap"><div id="calendar"></div></div>
   </div>
 
   <!-- Side: event detail + availability -->
@@ -69,6 +88,9 @@ document.addEventListener('DOMContentLoaded', function () {
       right: 'multiMonthYear,dayGridMonth,timeGridWeek,timeGridDay'
     },
     buttonText: { today:'Today', year:'Year', month:'Month', week:'Week', day:'Day' },
+    // "10:00 AM" instead of FullCalendar's cryptic "10a".
+    eventTimeFormat: { hour: 'numeric', minute: '2-digit', meridiem: 'short' },
+    displayEventTime: true,
     events: '{% url "dashboard:calendar_events" %}',
     eventClick: function (info) {
       var p = info.event.extendedProps;
@@ -86,6 +108,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   });
   cal.render();
+
+  // Legend doubles as a show/hide filter for each event category.
+  var wrap = document.getElementById('cal-wrap');
+  document.querySelectorAll('.cal-chip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var cat = chip.getAttribute('data-cat');
+      var nowOn = chip.getAttribute('aria-pressed') !== 'true';
+      chip.setAttribute('aria-pressed', nowOn ? 'true' : 'false');
+      wrap.classList.toggle('hide-' + cat, !nowOn);
+    });
+  });
 });
 </script>
 {% endblock %}

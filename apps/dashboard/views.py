@@ -271,23 +271,33 @@ def calendar_events(request):
     if not ws:
         return JsonResponse([], safe=False)
 
+    T = CalendarEvent.Type
     colors = {
-        CalendarEvent.Type.SHOOT: "#2F4156",
-        CalendarEvent.Type.EDITING_DUE: "#567C8D",
-        CalendarEvent.Type.PAYMENT_DUE: "#b7791f",
-        CalendarEvent.Type.CONTRACT_DUE: "#84a4c0",
-        CalendarEvent.Type.BLOCKED: "#9aabc0",
+        T.SHOOT: "#2F4156", T.EDITING_DUE: "#567C8D", T.PAYMENT_DUE: "#b7791f",
+        T.CONTRACT_DUE: "#84a4c0", T.BLOCKED: "#9aabc0",
+    }
+    icons = {T.SHOOT: "📷", T.EDITING_DUE: "🖼", T.PAYMENT_DUE: "💰", T.CONTRACT_DUE: "📄"}
+    # Bookings (the shoot itself) vs tasks (deadlines you owe).
+    category = {
+        T.SHOOT: "shoot", T.EDITING_DUE: "task", T.PAYMENT_DUE: "task",
+        T.CONTRACT_DUE: "task", T.BLOCKED: "blocked",
     }
     out = []
     for e in CalendarEvent.objects.filter(workspace=ws).select_related("booking"):
+        cat = category.get(e.event_type, "task")
         out.append({
             "id": str(e.id),
-            "title": e.title,
+            "title": f"{icons.get(e.event_type, '')} {e.title}".strip(),
             "start": e.start.isoformat(),
             "end": e.end.isoformat() if e.end else None,
             "color": colors.get(e.event_type, "#2F4156"),
+            # Shoots render as a solid block ("you're booked"); deadlines as a dot.
+            "display": "block" if cat == "shoot" else "list-item",
+            "classNames": [f"cat-{cat}"],
             "extendedProps": {
+                "category": cat,
                 "kind": e.get_event_type_display(),
+                "overdue": e.is_overdue,
                 "bookingUrl": reverse("dashboard:booking_detail", args=[e.booking_id]) if e.booking_id else "",
                 "bookingTitle": e.booking.title if e.booking_id else "",
                 "location": e.booking.location if e.booking_id else "",
@@ -298,7 +308,8 @@ def calendar_events(request):
     for av in availability.blocked_dates(ws):
         out.append({
             "start": av.date.isoformat(), "allDay": True, "display": "background",
-            "color": "#e7d9c9", "title": "Blocked",
+            "color": "#e7d9c9", "title": "Blocked", "classNames": ["cat-blocked"],
+            "extendedProps": {"category": "blocked"},
         })
     return JsonResponse(out, safe=False)
 
