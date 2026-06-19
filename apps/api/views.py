@@ -654,3 +654,71 @@ def thread_detail(request, pk):
         return Response(MessageSerializer(msg, context={"request": request}).data, status=201)
     thread.mark_read_for(request.user)
     return Response(ThreadDetailSerializer(thread, context={"request": request}).data)
+
+
+# ── Creative-to-creative collaboration (B-side: receive & respond) ──────────
+def _collaboration_payload(collab):
+    """REDACTED view of a collaboration for the invited creative (B). Mirrors the
+    web collaboration_detail: logistics + who hired them + their own fee, but
+    NEVER the client's identity, and no messaging channel to the client."""
+    b = collab.booking
+    return {
+        "id": collab.id,
+        "status": collab.status,
+        "status_display": collab.get_status_display(),
+        "role": collab.role,
+        "fee": str(collab.fee),
+        "is_paid": collab.is_paid,
+        # Booking logistics only — scope is the event type (the raw title embeds
+        # the client's name), and no client field is ever included.
+        "booking": {
+            "scope": b.scope_label,
+            "event_date": b.event_date.isoformat() if b.event_date else None,
+            "location": b.location,
+            "status_display": b.get_status_display(),
+            "booked_by": b.workspace.business_name,
+        },
+    }
+
+
+@api_view(["GET"])
+def collaborations(request):
+    """B's collaborations across every workspace they own: pending invites to
+    respond to + active collaborations."""
+    from apps.bookings.models import BookingCollaborator
+    ws_ids = list(request.user.owned_workspaces.values_list("id", flat=True))
+    qs = (BookingCollaborator.objects.filter(workspace_id__in=ws_ids)
+          .exclude(status=BookingCollaborator.Status.REMOVED)
+          .select_related("booking", "booking__workspace").order_by("-created_at"))
+    return Response({
+        "pending": [_collaboration_payload(c) for c in qs if c.is_pending],
+        "active": [_collaboration_payload(c) for c in qs if c.is_active],
+    })
+
+
+def _own_collaboration(request, pk, *, status=None):
+    from apps.bookings.models import BookingCollaborator
+    ws_ids = list(request.user.owned_workspaces.values_list("id", flat=True))
+    qs = BookingCollaborator.objects.select_related("booking", "booking__workspace").filter(
+        pk=pk, workspace_id__in=ws_ids)
+    if status:
+        qs = qs.filter(status=status)
+    return get_object_or_404(qs)
+
+
+@api_view(["GET"])
+def collaboration_detail(request, pk):
+    from apps.bookings.models import BookingCollaborator
+    collab = _own_collaboration(request, pk, status=BookingCollaborator.Status.ACCEPTED)
+    return Response(_collaboration_payload(collab))
+
+
+@api_view(["POST"])
+def collaboration_respond(request, pk):
+    """B accepts or declines a pending invite. Body: {"accept": true|false}."""
+    collab = _own_collaboration(request, pk)
+    if not collab.is_pending:
+        return Response({"detail": "This invite has already been answered."}, status=400)
+    accept = bool(request.data.get("accept"))
+    flow.respond_collaboration(collab, accept=accept)
+    return Response(_collaboration_payload(collab))

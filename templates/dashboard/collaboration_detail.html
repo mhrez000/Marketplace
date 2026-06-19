@@ -6,7 +6,7 @@
 
 <div class="mt-4 flex flex-wrap items-start justify-between gap-3">
   <div>
-    <h1 class="text-2xl font-600">{{ booking.title|default:"Collaboration" }}</h1>
+    <h1 class="text-2xl font-600">{{ booking.scope_label }}</h1>
     <p class="mt-1 text-sm text-navy-500">With {{ booking.workspace.business_name }} · {{ booking.event_date|date:"d M Y"|default:"date TBC" }}</p>
   </div>
   {% include "partials/_status.html" with status=booking.status label=booking.get_status_display %}
@@ -21,7 +21,7 @@
         <div class="flex justify-between"><span class="text-navy-500">Booked by</span><span class="font-medium text-navy-700">{{ booking.workspace.business_name }}</span></div>
         <div class="flex justify-between"><span class="text-navy-500">Date</span><span class="font-medium text-navy-700">{{ booking.event_date|date:"l, d M Y"|default:"Date TBC" }}</span></div>
         <div class="flex justify-between"><span class="text-navy-500">Location</span><span class="font-medium text-navy-700">{{ booking.location|default:"—" }}</span></div>
-        {% if booking.title %}<div class="flex justify-between"><span class="text-navy-500">Scope</span><span class="font-medium text-navy-700">{{ booking.title }}</span></div>{% endif %}
+        <div class="flex justify-between"><span class="text-navy-500">Scope</span><span class="font-medium text-navy-700">{{ booking.scope_label }}</span></div>
       </div>
       <div class="mt-4 flex items-start gap-2 rounded-xl bg-beige-100 p-3">
         <span class="text-navy-400">🔒</span>

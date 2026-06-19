@@ -620,3 +620,76 @@ class ApiMessagingTests(TestCase):
         tid = owner.get(reverse("api:threads")).data[0]["id"]
         intruder = self._auth("juniper@lens.test")  # unrelated creative
         self.assertEqual(intruder.get(reverse("api:thread_detail", args=[tid])).status_code, 403)
+
+
+class ApiCollaborationTests(TestCase):
+    """The collaboration API must give the invited creative (B) the logistics
+    and let them accept/decline — without ever leaking the client's identity."""
+
+    def setUp(self):
+        from decimal import Decimal
+        from apps.bookings import services as flow
+        from apps.bookings.models import BookingCollaborator
+        from apps.contracts.models import ContractTemplate
+        from apps.profiles.models import CreativeProfile, Package, Service
+        User = get_user_model()
+        self.flow = flow
+        self.BC = BookingCollaborator
+
+        a = User.objects.create_user(email="a@t.com", password="lens12345")
+        self.a_ws = Workspace.objects.create(owner=a, business_name="Studio A", is_published=True)
+        CreativeProfile.objects.create(workspace=self.a_ws, primary_category="events")
+        customer = User.objects.create_user(email="hidden-client@example.com", password="x",
+                                             first_name="Priya")
+        ContractTemplate.objects.create(name="Std", contract_type="events", body=flow.DEFAULT_CONTRACT)
+        svc = Service.objects.create(workspace=self.a_ws, category="events", title="E")
+        pkg = Package.objects.create(service=svc, name="Day", base_price=Decimal("3000"))
+        e = flow.create_enquiry(client=customer, workspace=self.a_ws, event_type="events",
+                                message="hi", location="Fitzroy")
+        q = flow.send_quote(enquiry=e, title="Wedding coverage", package=pkg,
+                            line_items=[{"label": "x", "amount": 3000}])
+        self.booking = flow.accept_quote(q)
+        self.booking.location = "Fitzroy"; self.booking.save()
+
+        User.objects.create_user(email="b@t.com", password="lens12345")
+        self.b_ws = Workspace.objects.create(
+            owner=get_user_model().objects.get(email="b@t.com"), business_name="Studio B", is_published=True)
+        CreativeProfile.objects.create(workspace=self.b_ws, primary_category="events")
+        self.collab = flow.invite_collaborator(self.booking, self.b_ws, role="Second shooter",
+                                               fee=Decimal("500"), by=a)
+
+    def _auth(self, email):
+        c = APIClient()
+        c.credentials(HTTP_AUTHORIZATION=f"Token {c.post(reverse('api:login'), {'email': email, 'password': 'lens12345'}).data['token']}")
+        return c
+
+    def test_pending_invite_listed_then_accept(self):
+        c = self._auth("b@t.com")
+        data = c.get(reverse("api:collaborations")).data
+        self.assertEqual(len(data["pending"]), 1)
+        self.assertEqual(len(data["active"]), 0)
+        self.assertEqual(data["pending"][0]["booking"]["booked_by"], "Studio A")
+        # accept
+        r = c.post(reverse("api:collaboration_respond", args=[self.collab.id]), {"accept": True})
+        self.assertEqual(r.status_code, 200)
+        self.collab.refresh_from_db()
+        self.assertEqual(self.collab.status, self.BC.Status.ACCEPTED)
+
+    def test_payload_never_leaks_client_identity(self):
+        import json
+        c = self._auth("b@t.com")
+        self.collab.status = self.BC.Status.ACCEPTED; self.collab.save()
+        blob = json.dumps(c.get(reverse("api:collaboration_detail", args=[self.collab.id])).data)
+        self.assertIn("Fitzroy", blob)            # logistics present
+        self.assertIn("Studio A", blob)           # who hired them
+        self.assertNotIn("hidden-client@example.com", blob)
+        self.assertNotIn("Priya", blob)
+        self.assertNotIn("client", blob.lower().replace("collaboration", ""))  # no client field
+
+    def test_detail_gated_on_accept_and_owner(self):
+        # pending -> detail 404 (must accept first)
+        b = self._auth("b@t.com")
+        self.assertEqual(b.get(reverse("api:collaboration_detail", args=[self.collab.id])).status_code, 404)
+        # a different creative can't see it
+        a = self._auth("a@t.com")
+        self.assertEqual(a.get(reverse("api:collaboration_detail", args=[self.collab.id])).status_code, 404)

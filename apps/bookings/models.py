@@ -94,6 +94,16 @@ class Booking(UUIDTimeStampedModel):
     def awaiting_review(self):
         return self.is_complete and not hasattr(self, "review")
 
+    @property
+    def scope_label(self):
+        """A client-SAFE description of the job for collaborators. The auto-built
+        title embeds the client's name ("Events — Priya"), so a second shooter
+        must only ever see the event type, never that."""
+        enquiry = self.enquiry if self.enquiry_id else None
+        if enquiry:
+            return enquiry.get_event_type_display()
+        return (self.title or "Booking").split(" — ")[0].strip() or "Booking"
+
 
 class CalendarEvent(TimeStampedModel):
     class Type(models.TextChoices):
