@@ -81,7 +81,8 @@
   </div>
 </div>
 
-<!-- Profile completeness — its own section with a clear to-do list -->
+<!-- Profile completeness — only while there's still something to do. -->
+{% if profile_pct < 100 %}
 <div class="card mt-6 p-5 sm:p-6 {% if not prof_listable %}ring-1 ring-amber-200{% endif %}">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
@@ -115,4 +116,5 @@
   <p class="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">To appear in search you need at least a <strong>bio</strong>, a <strong>starting price</strong>, and <strong>one package</strong>. Verification adds a trust badge.</p>
   {% endif %}
 </div>
+{% endif %}
 {% endblock %}

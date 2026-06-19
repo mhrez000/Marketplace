@@ -83,6 +83,24 @@ class ChecklistAndDeliveriesTests(TestCase):
         self.client.post("/app/checklist/", {"action": "delete", "id": t.pk}, SERVER_NAME="localhost")
         self.assertEqual(self.ws.task_templates.count(), 0)
 
+    def test_overview_hides_completeness_when_done(self):
+        from django.utils import timezone
+
+        from apps.profiles.models import Package, Service
+        self.client.force_login(self.creative)
+        # a fresh profile is incomplete -> the card shows
+        self.assertContains(self.client.get("/app/", SERVER_NAME="localhost"), "Profile completeness")
+
+        p = self.ws.profile
+        p.headline = "Editorial"; p.bio = "We shoot weddings"; p.starting_price = 2000; p.save()
+        svc = Service.objects.create(workspace=self.ws, category="events", title="E")
+        Package.objects.create(service=svc, name="Day", base_price=2000)
+        self.ws.verified_at = timezone.now(); self.ws.save()
+
+        # now 100% complete -> the card (and its Edit profile button) is hidden
+        r = self.client.get("/app/", SERVER_NAME="localhost")
+        self.assertNotContains(r, "Edit profile")
+
     def test_search_finds_leads(self):
         from apps.bookings import services as flow
         from apps.contracts.models import ContractTemplate
