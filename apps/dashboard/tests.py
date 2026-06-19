@@ -83,6 +83,31 @@ class ChecklistAndDeliveriesTests(TestCase):
         self.client.post("/app/checklist/", {"action": "delete", "id": t.pk}, SERVER_NAME="localhost")
         self.assertEqual(self.ws.task_templates.count(), 0)
 
+    def test_package_add_edit_delete(self):
+        from apps.profiles.models import Package
+        self.client.force_login(self.creative)
+        # add
+        self.client.post("/app/profile/", {"action": "add_package", "name": "Half Day",
+                                           "base_price": "3200", "inclusions": "6 hours\nGallery"},
+                         SERVER_NAME="localhost")
+        pkg = Package.objects.filter(service__workspace=self.ws).first()
+        self.assertIsNotNone(pkg)
+        self.assertEqual(str(pkg.base_price), "3200.00")
+        # edit
+        self.client.post("/app/profile/", {"action": "edit_package", "package_id": pkg.pk,
+                                           "name": "Half Day", "base_price": "3500"},
+                         SERVER_NAME="localhost")
+        pkg.refresh_from_db()
+        self.assertEqual(str(pkg.base_price), "3500.00")
+        # add without a price is rejected
+        self.client.post("/app/profile/", {"action": "add_package", "name": "Bad"},
+                         SERVER_NAME="localhost")
+        self.assertEqual(Package.objects.filter(service__workspace=self.ws).count(), 1)
+        # delete
+        self.client.post("/app/profile/", {"action": "delete_package", "package_id": pkg.pk},
+                         SERVER_NAME="localhost")
+        self.assertEqual(Package.objects.filter(service__workspace=self.ws).count(), 0)
+
     def test_deliveries_panel_partial(self):
         self.client.force_login(self.creative)
         r = self.client.get("/app/deliveries/?panel=1", SERVER_NAME="localhost")

@@ -528,6 +528,10 @@ def profile(request):
         return redirect("dashboard:onboarding")
     p = getattr(ws, "profile", None)
     if request.method == "POST" and p:
+        action = request.POST.get("action")
+        if action in {"add_package", "edit_package", "delete_package"}:
+            _handle_package_action(request, ws, p, action)
+            return redirect("dashboard:profile")
         p.headline = request.POST.get("headline", p.headline)
         p.bio = request.POST.get("bio", p.bio)
         p.styles = request.POST.get("styles", p.styles)
@@ -535,10 +539,49 @@ def profile(request):
         p.save()
         messages.success(request, "Profile updated.")
         return redirect("dashboard:profile")
+    packages = Package.objects.filter(service__workspace=ws).select_related("service")
     return render(request, "dashboard/profile.html", {
-        "active": "profile", "ws": ws, "profile": p,
+        "active": "profile", "ws": ws, "profile": p, "packages": packages,
         "completeness": availability.completeness(ws),
     })
+
+
+def _handle_package_action(request, ws, profile, action):
+    if action == "delete_package":
+        Package.objects.filter(pk=request.POST.get("package_id"), service__workspace=ws).delete()
+        messages.success(request, "Package removed.")
+        return
+
+    name = request.POST.get("name", "").strip()
+    price_raw = request.POST.get("base_price", "").strip()
+    try:
+        price = Decimal(price_raw) if price_raw else None
+    except (ValueError, ArithmeticError):
+        price = None
+
+    if action == "edit_package":
+        pkg = get_object_or_404(Package, pk=request.POST.get("package_id"), service__workspace=ws)
+        if name:
+            pkg.name = name
+        if price is not None:
+            pkg.base_price = price
+        pkg.description = request.POST.get("description", pkg.description).strip()
+        pkg.inclusions = request.POST.get("inclusions", pkg.inclusions)
+        pkg.save()
+        messages.success(request, f"Updated “{pkg.name}”.")
+        return
+
+    # add_package
+    if not name or price is None:
+        messages.error(request, "A package needs a name and a price.")
+        return
+    service = ws.services.first() or Service.objects.create(
+        workspace=ws, category=profile.primary_category, title=ws.business_name)
+    Package.objects.create(
+        service=service, name=name, base_price=price,
+        description=request.POST.get("description", "").strip(),
+        inclusions=request.POST.get("inclusions", "").strip())
+    messages.success(request, f"Added “{name}”.")
 
 
 @login_required
