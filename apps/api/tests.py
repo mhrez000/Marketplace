@@ -242,6 +242,30 @@ class ApiCreativeProfileTests(TestCase):
     def test_client_has_no_profile(self):
         self.assertEqual(self._auth("olivia@lens.test").get(reverse("api:my_profile")).status_code, 403)
 
+    def test_package_crud(self):
+        c = self._auth("harper@lens.test")
+        before = len(c.get(reverse("api:my_profile")).data["packages"])
+        created = c.post(reverse("api:packages"),
+                         {"name": "Engagement", "base_price": "950",
+                          "inclusions": ["50 photos", "Gallery"]}, format="json")
+        self.assertEqual(created.status_code, 201)
+        pid = created.data["id"]
+        self.assertEqual(created.data["base_price"], "950.00")
+        self.assertEqual(created.data["inclusions"], ["50 photos", "Gallery"])
+        # appears in the profile payload
+        self.assertEqual(len(c.get(reverse("api:my_profile")).data["packages"]), before + 1)
+        # edit
+        upd = c.put(reverse("api:package_detail", args=[pid]), {"base_price": "1100"}, format="json")
+        self.assertEqual(upd.data["base_price"], "1100.00")
+        # delete
+        self.assertEqual(c.delete(reverse("api:package_detail", args=[pid])).status_code, 204)
+        self.assertEqual(len(c.get(reverse("api:my_profile")).data["packages"]), before)
+
+    def test_client_cannot_manage_packages(self):
+        self.assertEqual(
+            self._auth("olivia@lens.test").post(reverse("api:packages"),
+                                                {"name": "X", "base_price": "1"}).status_code, 403)
+
     def test_analytics_for_creative(self):
         a = self._auth("harper@lens.test").get(reverse("api:analytics"))
         self.assertEqual(a.status_code, 200)

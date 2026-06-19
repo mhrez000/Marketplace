@@ -20,7 +20,8 @@ from apps.enquiries.models import Enquiry
 from apps.galleries.models import Asset, Gallery
 from apps.messaging.models import Message, Thread
 from apps.payments.models import Invoice
-from apps.profiles.models import CATEGORY_CHOICES, CreativeProfile
+from apps.profiles.models import (CATEGORY_CHOICES, CreativeProfile, Package,
+                                  Service)
 from apps.profiles.services import filter_listable
 from apps.workspaces.models import Workspace
 
@@ -425,6 +426,19 @@ def quote_decline(request, pk):
     return Response({"status": "declined"})
 
 
+def _package_dict(pkg):
+    return {
+        "id": pkg.id, "name": pkg.name, "base_price": f"{pkg.base_price:.2f}",
+        "description": pkg.description, "inclusions": pkg.inclusion_list,
+    }
+
+
+def _inclusions_to_text(val):
+    if isinstance(val, list):
+        return "\n".join(str(s).strip() for s in val if str(s).strip())
+    return (val or "").strip()
+
+
 def _profile_payload(p):
     return {
         "business_name": p.workspace.business_name,
@@ -435,7 +449,54 @@ def _profile_payload(p):
         "bio": p.bio,
         "styles": p.style_list,
         "starting_price": f"{p.starting_price:.2f}" if p.starting_price is not None else None,
+        "packages": [_package_dict(pk) for pk in
+                     Package.objects.filter(service__workspace=p.workspace).select_related("service")],
     }
+
+
+@api_view(["POST"])
+def packages(request):
+    ws = get_active_workspace(request.user)
+    if not ws:
+        return Response({"detail": "Only creatives can manage packages."}, status=403)
+    name = (request.data.get("name") or "").strip()
+    try:
+        price = Decimal(str(request.data.get("base_price")))
+    except (TypeError, ValueError, InvalidOperation):
+        price = None
+    if not name or price is None:
+        return Response({"detail": "A package needs a name and a valid price."}, status=400)
+    service = ws.services.first() or Service.objects.create(
+        workspace=ws, category=ws.profile.primary_category, title=ws.business_name)
+    pkg = Package.objects.create(
+        service=service, name=name, base_price=price,
+        description=(request.data.get("description") or "").strip(),
+        inclusions=_inclusions_to_text(request.data.get("inclusions")))
+    return Response(_package_dict(pkg), status=201)
+
+
+@api_view(["PUT", "DELETE"])
+def package_detail(request, pk):
+    ws = get_active_workspace(request.user)
+    if not ws:
+        return Response({"detail": "Only creatives can manage packages."}, status=403)
+    pkg = get_object_or_404(Package, pk=pk, service__workspace=ws)
+    if request.method == "DELETE":
+        pkg.delete()
+        return Response(status=204)
+    if request.data.get("name"):
+        pkg.name = request.data["name"].strip()
+    if "base_price" in request.data:
+        try:
+            pkg.base_price = Decimal(str(request.data["base_price"]))
+        except (TypeError, ValueError, InvalidOperation):
+            return Response({"detail": "Enter a valid price."}, status=400)
+    if "description" in request.data:
+        pkg.description = (request.data.get("description") or "").strip()
+    if "inclusions" in request.data:
+        pkg.inclusions = _inclusions_to_text(request.data.get("inclusions"))
+    pkg.save()
+    return Response(_package_dict(pkg))
 
 
 @api_view(["GET", "PUT"])
