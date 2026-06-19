@@ -34,6 +34,33 @@ class FavouriteTests(TestCase):
         self.assertFalse(Favourite.objects.exists())
 
 
+class PublicProfileVisibilityTests(TestCase):
+    """The 'View public page' link must reach the profile, not bounce to a 404.
+    The owner can preview their own page before publishing; others can't."""
+
+    def setUp(self):
+        self.owner = User.objects.create_user(email="owner@t.com", password="x")
+        self.other = User.objects.create_user(email="nosy@t.com", password="x")
+        self.ws = Workspace.objects.create(owner=self.owner, business_name="Draft Studio",
+                                           is_published=False)
+        CreativeProfile.objects.create(workspace=self.ws, primary_category="events")
+
+    def test_owner_can_preview_unpublished_page(self):
+        self.client.force_login(self.owner)
+        r = self.client.get(f"/p/{self.ws.slug}/", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 200)
+
+    def test_unpublished_hidden_from_others(self):
+        self.assertEqual(self.client.get(f"/p/{self.ws.slug}/", SERVER_NAME="localhost").status_code, 404)
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.get(f"/p/{self.ws.slug}/", SERVER_NAME="localhost").status_code, 404)
+
+    def test_published_page_is_public(self):
+        self.ws.is_published = True
+        self.ws.save(update_fields=["is_published"])
+        self.assertEqual(self.client.get(f"/p/{self.ws.slug}/", SERVER_NAME="localhost").status_code, 200)
+
+
 class StaticPageTests(TestCase):
     def test_legal_and_support_pages_render(self):
         for path, needle in [("/privacy/", "Privacy Policy"),

@@ -71,11 +71,16 @@ def search(request):
 
 def profile_detail(request, slug):
     workspace = get_object_or_404(
-        Workspace.objects.filter(is_published=True).select_related("profile"), slug=slug
+        Workspace.objects.select_related("profile"), slug=slug
     )
+    # The owner can always preview their own page (even before it's published);
+    # everyone else only sees published profiles, otherwise it's a 404.
+    is_owner = request.user.is_authenticated and request.user.id == workspace.owner_id
+    if not workspace.is_published and not is_owner:
+        from django.http import Http404
+        raise Http404("Profile not found")
     profile = workspace.profile
     # Count a profile view — but not the owner's own visits.
-    is_owner = request.user.is_authenticated and request.user.id == workspace.owner_id
     if not is_owner:
         from django.db.models import F
         CreativeProfile.objects.filter(pk=profile.pk).update(view_count=F("view_count") + 1)
