@@ -105,9 +105,8 @@ document.addEventListener('DOMContentLoaded', function () {
       right: 'multiMonthYear,dayGridMonth,timeGridWeek,timeGridDay'
     },
     buttonText: { today:'Today', year:'Year', month:'Month', week:'Week', day:'Day' },
-    // "10:00 AM" instead of FullCalendar's cryptic "10a".
-    eventTimeFormat: { hour: 'numeric', minute: '2-digit', meridiem: 'short' },
-    displayEventTime: true,
+    // Show just the title/icon — no times cluttering the month grid.
+    displayEventTime: false,
     events: '{% url "dashboard:calendar_events" %}',
     // Click a day to start a personal event on that date.
     dateClick: function (info) {
