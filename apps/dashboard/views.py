@@ -160,6 +160,38 @@ def bookings_list(request):
 
 
 @login_required
+def hire(request):
+    """The creative acting as a *client* — the enquiries and bookings they've
+    made TO other creatives. This is the in-dashboard version of the public
+    'My portal', so a service provider can book other service providers without
+    leaving the dashboard shell. Filters on `client=` (you as the buyer), the
+    mirror image of leads/bookings which filter on `workspace=` (you as seller).
+    """
+    ws = _require_workspace(request)
+    if not ws:
+        return redirect("dashboard:onboarding")
+    # Keep statuses fresh (same cheap housekeeping the public portal does).
+    from apps.enquiries.services import expire_quotes
+    from apps.payments.services import mark_overdue_invoices
+    expire_quotes()
+    mark_overdue_invoices()
+
+    enquiries = (Enquiry.objects.filter(client=request.user)
+                 .select_related("workspace").prefetch_related("quotes").order_by("-created_at"))
+    bookings = (Booking.objects.filter(client=request.user)
+                .select_related("workspace").order_by("-created_at"))
+    from apps.core.selectors import annotate_ratings
+    fav_ids = request.user.favourites.values_list("workspace_id", flat=True)
+    saved = annotate_ratings(
+        CreativeProfile.objects.filter(workspace_id__in=fav_ids, workspace__is_published=True)
+        .select_related("workspace"))
+    return render(request, "dashboard/hire.html", {
+        "active": "hire", "ws": ws,
+        "enquiries": enquiries, "bookings": bookings, "saved": saved,
+    })
+
+
+@login_required
 def booking_detail(request, pk):
     ws = _require_workspace(request)
     booking = get_object_or_404(

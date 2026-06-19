@@ -209,3 +209,32 @@ class ChecklistAndDeliveriesTests(TestCase):
         self.client.post("/app/calendar/", {"action": "delete_event", "event_id": ev.pk},
                          SERVER_NAME="localhost")
         self.assertFalse(CalendarEvent.objects.filter(pk=ev.pk).exists())
+
+
+class HireTabTests(TestCase):
+    """The dashboard 'Hire creatives' tab shows the creative acting as a *client* —
+    enquiries/bookings they made to OTHER creatives — inside the dashboard shell,
+    the mirror of leads/bookings (which are the sell side)."""
+
+    def setUp(self):
+        self.me = User.objects.create_user(email="me@t.com", password="x")
+        self.my_ws = Workspace.objects.create(owner=self.me, business_name="My Studio", is_published=True)
+        CreativeProfile.objects.create(workspace=self.my_ws, primary_category="events")
+        other = User.objects.create_user(email="other@t.com", password="x")
+        self.other_ws = Workspace.objects.create(owner=other, business_name="Other Studio", is_published=True)
+        CreativeProfile.objects.create(workspace=self.other_ws, primary_category="events")
+
+    def test_hire_tab_renders_in_dashboard_shell(self):
+        self.client.force_login(self.me)
+        r = self.client.get("/app/hire/", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Hire creatives")
+        self.assertContains(r, "lg:pl-64")  # the dashboard shell, not the public layout
+
+    def test_my_enquiry_shows_here_but_not_in_my_leads(self):
+        flow.create_enquiry(client=self.me, workspace=self.other_ws, event_type="events", message="hi")
+        self.client.force_login(self.me)
+        # the creative I'm hiring shows up on my Hire tab (I'm the client)
+        self.assertContains(self.client.get("/app/hire/", SERVER_NAME="localhost"), "Other Studio")
+        # ...and it must NOT leak into my own sell-side Leads (those filter on workspace=mine)
+        self.assertNotContains(self.client.get("/app/leads/", SERVER_NAME="localhost"), "Other Studio")

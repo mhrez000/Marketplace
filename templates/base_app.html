@@ -12,6 +12,7 @@
     <nav class="flex flex-col gap-1 overflow-y-auto p-3">
       {% with a=active %}
       <a href="{% url 'dashboard:overview' %}" class="{% if a == 'overview' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='grid' %}Overview</a>
+      <a href="{% url 'dashboard:hire' %}" class="{% if a == 'hire' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='search' %}Hire creatives</a>
 
       <p class="nav-section">Workflow</p>
       <a href="{% url 'dashboard:leads' %}" class="{% if a == 'leads' %}nav-link-active{% else %}nav-link{% endif %}">{% include "dashboard/_navicon.html" with name='inbox' %}Leads</a>
