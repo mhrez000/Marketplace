@@ -48,8 +48,10 @@
             <a href="{% url 'portal:gallery_detail' g.pk %}" class="btn-accent !py-1.5 !px-4 text-xs">Open gallery</a>
           {% endif %}
         </div>
-        <p class="mt-1 text-sm text-navy-400">Delivered {{ g.delivered_at|date:"d M Y" }}{% if g.is_link_delivery %} · opens in a new tab</p>
-        <p class="mt-1 text-xs text-navy-400">Trouble opening it? <a href="#messages" class="font-semibold text-teal-600 hover:underline">Message your creative</a> below.</p>{% else %}</p>{% endif %}
+        <p class="mt-1 text-sm text-navy-400">Delivered {{ g.delivered_at|date:"d M Y" }}{% if g.is_link_delivery %} · opens in a new tab{% endif %}</p>
+        {% if g.is_link_delivery %}
+        <p class="mt-1 text-xs text-navy-400">Trouble opening it? <a href="#messages" class="font-semibold text-teal-600 hover:underline">Message your creative</a> below.</p>
+        {% endif %}
       </div>
       {% endfor %}
 

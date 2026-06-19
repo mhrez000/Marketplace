@@ -109,7 +109,7 @@
       <div class="mt-3 space-y-2 text-sm">
         <div class="flex items-center justify-between"><span class="text-navy-500">Published</span>{% if ws.is_published %}<span class="pill-verified">Live</span>{% else %}<span class="pill-beige">Pending</span>{% endif %}</div>
         <div class="flex items-center justify-between"><span class="text-navy-500">Verified</span>{% if ws.is_verified %}<span class="pill-verified">✓ Verified</span>{% else %}<span class="pill-beige">Not yet</span>{% endif %}</div>
-        <div class="flex items-center justify-between"><span class="text-navy-500">Plan</span><span class="pill-sky">{{ ws.subscription.get_plan_display|default:"Free" }}</span></div>
+        <div class="flex items-center justify-between"><span class="text-navy-500">Plan</span><span class="pill-sky">{{ plan_display }}</span></div>
       </div>
     </div>
     <div class="card p-6">

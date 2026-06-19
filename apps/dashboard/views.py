@@ -562,8 +562,10 @@ def profile(request):
         messages.success(request, "Profile updated.")
         return redirect("dashboard:profile")
     packages = Package.objects.filter(service__workspace=ws).select_related("service")
+    sub = Subscription.objects.filter(workspace=ws).first()
     return render(request, "dashboard/profile.html", {
         "active": "profile", "ws": ws, "profile": p, "packages": packages,
+        "plan_display": sub.get_plan_display() if sub else "Free",
         "completeness": availability.completeness(ws),
     })
 
