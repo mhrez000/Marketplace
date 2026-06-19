@@ -693,3 +693,36 @@ class ApiCollaborationTests(TestCase):
         # a different creative can't see it
         a = self._auth("a@t.com")
         self.assertEqual(a.get(reverse("api:collaboration_detail", args=[self.collab.id])).status_code, 404)
+
+    def test_a_side_invite_list_pay_remove(self):
+        from apps.bookings.models import BookingCollaborator
+        # remove the auto-created invite from setUp so we start clean
+        BookingCollaborator.objects.all().delete()
+        a = self._auth("a@t.com")
+        bid = str(self.booking.id)
+        # invite by creative slug
+        r = a.post(reverse("api:booking_collaborators", args=[bid]),
+                   {"creative": self.b_ws.slug, "role": "Second shooter", "fee": "400"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.data), 1)
+        self.assertEqual(r.data[0]["workspace_name"], "Studio B")
+        cid = r.data[0]["id"]
+        # B accepts, then A pays
+        c = BookingCollaborator.objects.get(pk=cid)
+        c.status = BookingCollaborator.Status.ACCEPTED; c.save()
+        pay = a.post(reverse("api:booking_collaborator_pay", args=[bid, cid]))
+        self.assertEqual(pay.status_code, 200)
+        self.assertTrue(pay.data["is_paid"])
+        # remove
+        rm = a.post(reverse("api:booking_collaborator_remove", args=[bid, cid]))
+        self.assertEqual(rm.status_code, 200)
+        self.assertEqual(a.get(reverse("api:booking_collaborators", args=[bid])).data, [])
+
+    def test_a_side_requires_booking_owner(self):
+        from apps.bookings.models import BookingCollaborator
+        BookingCollaborator.objects.all().delete()
+        # B is not the owner of A's booking -> 404
+        b = self._auth("b@t.com")
+        self.assertEqual(
+            b.post(reverse("api:booking_collaborators", args=[str(self.booking.id)]),
+                   {"creative": self.b_ws.slug}).status_code, 404)

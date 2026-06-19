@@ -722,3 +722,66 @@ def collaboration_respond(request, pk):
     accept = bool(request.data.get("accept"))
     flow.respond_collaboration(collab, accept=accept)
     return Response(_collaboration_payload(collab))
+
+
+# ── Creative-to-creative collaboration (A-side: manage on your own booking) ──
+def _collaborator_payload(c):
+    """A's (the booking owner's) view of a collaborator — full name shown; this
+    is the OTHER creative, not the client, so it's safe."""
+    return {
+        "id": c.id,
+        "workspace_name": c.workspace.business_name,
+        "workspace_slug": c.workspace.slug,
+        "role": c.role,
+        "fee": str(c.fee),
+        "status": c.status,
+        "status_display": c.get_status_display(),
+        "is_paid": c.is_paid,
+    }
+
+
+def _owned_booking(request, pk):
+    return get_object_or_404(Booking, pk=pk, workspace__owner=request.user)
+
+
+@api_view(["GET", "POST"])
+def booking_collaborators(request, pk):
+    """A lists / invites collaborators on their own booking. POST body:
+    {"creative": "<slug>", "role": "...", "fee": "..."}. Returns the list."""
+    from apps.bookings.models import BookingCollaborator
+    booking = _owned_booking(request, pk)
+    if request.method == "POST":
+        target = Workspace.objects.filter(
+            slug=(request.data.get("creative") or "").strip(), is_published=True).first()
+        if not target:
+            return Response({"detail": "Pick a creative to collaborate with."}, status=400)
+        try:
+            fee = Decimal(str(request.data.get("fee") or "0"))
+        except (InvalidOperation, ValueError):
+            return Response({"detail": "Enter a valid fee amount."}, status=400)
+        try:
+            flow.invite_collaborator(booking, target, role=(request.data.get("role") or "").strip(),
+                                     fee=fee, by=request.user)
+        except flow.CollaborationError as e:
+            return Response({"detail": str(e)}, status=400)
+    collabs = (booking.collaborators.exclude(status=BookingCollaborator.Status.REMOVED)
+               .select_related("workspace"))
+    return Response([_collaborator_payload(c) for c in collabs])
+
+
+@api_view(["POST"])
+def booking_collaborator_pay(request, pk, cid):
+    booking = _owned_booking(request, pk)
+    c = get_object_or_404(booking.collaborators, pk=cid)
+    try:
+        flow.pay_collaborator(c)
+    except flow.CollaborationError as e:
+        return Response({"detail": str(e)}, status=400)
+    return Response(_collaborator_payload(c))
+
+
+@api_view(["POST"])
+def booking_collaborator_remove(request, pk, cid):
+    booking = _owned_booking(request, pk)
+    flow.remove_collaborator(get_object_or_404(booking.collaborators, pk=cid))
+    return Response({"removed": True})
