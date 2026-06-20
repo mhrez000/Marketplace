@@ -5,6 +5,12 @@ from .base import *  # noqa: F401,F403
 
 DEBUG = False
 
+# Fail fast: never let production boot with base's insecure dev fallback key.
+# `env("SECRET_KEY")` raises ImproperlyConfigured if the secret is unset, so a
+# misconfigured deploy crashes loudly instead of silently signing cookies and
+# password-reset tokens with a public, committed default.
+SECRET_KEY = env("SECRET_KEY")  # noqa: F405
+
 # Trust the platform's proxy for HTTPS detection.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = True

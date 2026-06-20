@@ -190,6 +190,20 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    # Rate limiting — brake on brute-force/credential-stuffing and scraping. The
+    # auth endpoints get their own tight scopes (set on the views). NOTE: reliable
+    # cross-worker throttling needs a shared cache (Redis) in prod — LocMemCache is
+    # per-process. Throttles are disabled in test settings.
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/min",
+        "user": "240/min",
+        "login": "10/min",
+        "register": "5/hour",
+    },
 }
 
 # Brand — "Lens" is the working name; rename in one place.

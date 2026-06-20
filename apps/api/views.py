@@ -3,14 +3,17 @@
 from decimal import Decimal, InvalidOperation
 
 from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import (api_view, parser_classes,
-                                        permission_classes)
+                                        permission_classes, throttle_classes)
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 
 from apps.bookings import services as flow
 from apps.bookings.models import Booking
@@ -40,8 +43,17 @@ def _token_payload(user):
     return {"token": token.key, "user": UserSerializer(user).data}
 
 
+class LoginRateThrottle(AnonRateThrottle):
+    scope = "login"
+
+
+class RegisterRateThrottle(AnonRateThrottle):
+    scope = "register"
+
+
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
+@throttle_classes([RegisterRateThrottle])
 def register(request):
     email = (request.data.get("email") or "").strip().lower()
     password = request.data.get("password") or ""
@@ -49,6 +61,12 @@ def register(request):
         return Response({"detail": "Email and password are required."}, status=400)
     if User.objects.filter(email__iexact=email).exists():
         return Response({"detail": "An account with that email already exists."}, status=400)
+    # Run Django's password validators (length, common-password, numeric, similarity)
+    # — create_user does NOT do this automatically.
+    try:
+        validate_password(password)
+    except DjangoValidationError as e:
+        return Response({"detail": " ".join(e.messages)}, status=400)
     name = (request.data.get("name") or "").strip()
     first, _, last = name.partition(" ")
     user = User.objects.create_user(email=email, password=password, first_name=first, last_name=last,
@@ -58,6 +76,7 @@ def register(request):
 
 @api_view(["POST"])
 @permission_classes([permissions.AllowAny])
+@throttle_classes([LoginRateThrottle])
 def login(request):
     email = (request.data.get("email") or "").strip().lower()
     password = request.data.get("password") or ""
@@ -65,6 +84,14 @@ def login(request):
     if not user:
         return Response({"detail": "Invalid email or password."}, status=400)
     return Response(_token_payload(user))
+
+
+@api_view(["POST"])
+def logout(request):
+    """Revoke the caller's API token so a captured token can't be replayed.
+    (DRF tokens otherwise never expire — pair with token rotation/JWT longer-term.)"""
+    Token.objects.filter(user=request.user).delete()
+    return Response(status=204)
 
 
 @api_view(["GET"])
@@ -363,10 +390,18 @@ def booking_advance(request, pk):
         return Response({"detail": "Only creatives can update production status."}, status=403)
     b = get_object_or_404(Booking, pk=pk, workspace=ws)
     step = request.data.get("step")
+    S = Booking.Status
+    # Don't force illegal jumps — a booking must actually be confirmed (and shot)
+    # before it can be marked shot/editing, else an unpaid/cancelled booking could
+    # be pushed straight to "delivered".
     if step == "shoot_completed":
-        b.transition(Booking.Status.SHOOT_COMPLETED, force=True)
+        if b.status not in {S.CONFIRMED, S.PLANNING}:
+            return Response({"detail": "This booking isn't confirmed yet."}, status=400)
+        b.transition(S.SHOOT_COMPLETED)
     elif step == "start_editing":
-        b.transition(Booking.Status.EDITING, force=True)
+        if b.status != S.SHOOT_COMPLETED:
+            return Response({"detail": "Mark the shoot completed first."}, status=400)
+        b.transition(S.EDITING)
     else:
         return Response({"detail": "Unknown step."}, status=400)
     b.refresh_from_db()
@@ -601,6 +636,13 @@ def gallery_upload(request, pk):
         images = [request.FILES["image"]]
     if not images:
         return Response({"detail": "Attach at least one photo."}, status=400)
+    # Bound the request so a creative can't fill the volume / exhaust memory.
+    MAX_FILES, MAX_BYTES = 40, 25 * 1024 * 1024  # 40 photos, 25 MB each
+    if len(images) > MAX_FILES:
+        return Response({"detail": f"Upload at most {MAX_FILES} photos per request."}, status=400)
+    for img in images:
+        if img.size > MAX_BYTES:
+            return Response({"detail": f"“{img.name}” is over the 25 MB limit."}, status=400)
 
     gallery = b.galleries.filter(delivery_url="").first()
     if not gallery:

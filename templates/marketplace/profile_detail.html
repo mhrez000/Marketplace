@@ -101,7 +101,7 @@
           {% for r in reviews %}
           <div class="card p-5">
             <div class="flex items-center justify-between">
-              <p class="font-semibold text-navy-700">{{ r.client.get_full_name|default:r.client.email }}</p>
+              <p class="font-semibold text-navy-700">{{ r.client.get_full_name|default:'Verified client' }}</p>
               <span class="inline-flex items-center gap-1 text-sm font-semibold">{% for _ in "x"|rjust:r.rating %}★{% endfor %}</span>
             </div>
             {% if r.title %}<p class="mt-1 font-medium text-navy-600">{{ r.title }}</p>{% endif %}

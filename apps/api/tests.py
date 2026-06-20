@@ -80,6 +80,25 @@ class ApiAuthTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.data["email"], "olivia@lens.test")
 
+    def test_register_rejects_weak_password(self):
+        """F2: API register must run password validators (create_user doesn't)."""
+        resp = self.client.post(reverse("api:register"),
+                                {"email": "weak@lens.test", "password": "1"})
+        self.assertEqual(resp.status_code, 400)
+        from django.contrib.auth import get_user_model
+        self.assertFalse(get_user_model().objects.filter(email="weak@lens.test").exists())
+
+    def test_logout_revokes_token(self):
+        """F7: logging out deletes the token so it can't be replayed."""
+        from rest_framework.authtoken.models import Token
+        token = self.client.post(reverse("api:login"),
+                                 {"email": "olivia@lens.test", "password": "lens12345"}).data["token"]
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+        self.assertEqual(self.client.post(reverse("api:logout")).status_code, 204)
+        self.assertFalse(Token.objects.filter(key=token).exists())
+        # the revoked token no longer authenticates
+        self.assertEqual(self.client.get(reverse("api:me")).status_code, 401)
+
 
 class ApiCreativesTests(TestCase):
     @classmethod
@@ -726,3 +745,46 @@ class ApiCollaborationTests(TestCase):
         self.assertEqual(
             b.post(reverse("api:booking_collaborators", args=[str(self.booking.id)]),
                    {"creative": self.b_ws.slug}).status_code, 404)
+
+
+class SecurityRegressionTests(TestCase):
+    """Regression coverage for the security audit fixes (F8 PII leak, F9 state guard)."""
+
+    def setUp(self):
+        from decimal import Decimal
+        from apps.bookings import services as flow
+        from apps.contracts.models import ContractTemplate
+        from apps.profiles.models import CreativeProfile, Package, Service
+        from apps.reviews.models import Review
+        User = get_user_model()
+        self.creative = User.objects.create_user(email="cr@t.com", password="lens12345")
+        self.ws = Workspace.objects.create(owner=self.creative, business_name="Studio",
+                                           is_published=True, slug="studio")
+        CreativeProfile.objects.create(workspace=self.ws, primary_category="events")
+        # a reviewer with NO display name — would previously fall back to email
+        self.nameless = User.objects.create_user(email="harvest-me@example.com", password="lens12345")
+        ContractTemplate.objects.create(name="Std", contract_type="events", body=flow.DEFAULT_CONTRACT)
+        svc = Service.objects.create(workspace=self.ws, category="events", title="E")
+        pkg = Package.objects.create(service=svc, name="Day", base_price=Decimal("1000"))
+        e = flow.create_enquiry(client=self.nameless, workspace=self.ws, event_type="events", message="hi")
+        q = flow.send_quote(enquiry=e, title="Q", package=pkg, line_items=[{"label": "x", "amount": 1000}])
+        self.booking = flow.accept_quote(q)
+        Review.objects.create(booking=self.booking, client=self.nameless, workspace=self.ws,
+                              rating=5, title="Great", body="loved it", verified=True)
+
+    def test_public_creative_detail_does_not_leak_reviewer_email(self):
+        import json
+        r = APIClient().get(reverse("api:creative_detail", args=[self.ws.slug]))  # AllowAny
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn("harvest-me@example.com", json.dumps(r.data))
+        self.assertTrue(any(rev["client_name"] == "Verified client" for rev in r.data["reviews"]))
+
+    def test_advance_blocked_on_unconfirmed_booking(self):
+        c = APIClient()
+        token = c.post(reverse("api:login"), {"email": "cr@t.com", "password": "lens12345"}).data["token"]
+        c.credentials(HTTP_AUTHORIZATION=f"Token {token}")
+        # booking was just quote-accepted — not confirmed (no deposit paid)
+        r = c.post(reverse("api:booking_advance", args=[str(self.booking.id)]), {"step": "shoot_completed"})
+        self.assertEqual(r.status_code, 400)
+        self.booking.refresh_from_db()
+        self.assertNotEqual(self.booking.status, Booking.Status.SHOOT_COMPLETED)

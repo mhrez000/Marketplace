@@ -231,11 +231,17 @@ def _handle_creative_action(request, booking, contract, action):
         flow.sign_contract_creative(contract, name=booking.workspace.business_name, request=request)
         messages.success(request, "You signed the contract.")
     elif action == "shoot_completed":
-        booking.transition(Booking.Status.SHOOT_COMPLETED, force=True)
-        messages.success(request, "Marked shoot as completed.")
+        if booking.status in {Booking.Status.CONFIRMED, Booking.Status.PLANNING}:
+            booking.transition(Booking.Status.SHOOT_COMPLETED)
+            messages.success(request, "Marked shoot as completed.")
+        else:
+            messages.error(request, "This booking isn't confirmed yet.")
     elif action == "start_editing":
-        booking.transition(Booking.Status.EDITING, force=True)
-        messages.success(request, "Editing started.")
+        if booking.status == Booking.Status.SHOOT_COMPLETED:
+            booking.transition(Booking.Status.EDITING)
+            messages.success(request, "Editing started.")
+        else:
+            messages.error(request, "Mark the shoot completed first.")
     elif action == "deliver_link":
         url = request.POST.get("delivery_url", "").strip()
         from django.core.validators import URLValidator

@@ -47,7 +47,14 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = ["id", "rating", "title", "body", "verified", "client_name", "created_at"]
 
     def get_client_name(self, obj):
-        return obj.client.get_full_name() or obj.client.email
+        # PUBLIC output (served on the unauthenticated creative profile). NEVER fall
+        # back to the client's email — that lets anonymous users harvest reviewer
+        # emails. Show first name + last initial, or a neutral label.
+        first = (obj.client.first_name or "").strip()
+        last = (obj.client.last_name or "").strip()
+        if first and last:
+            return f"{first} {last[:1]}."
+        return first or "Verified client"
 
 
 class CreativeListSerializer(serializers.ModelSerializer):
