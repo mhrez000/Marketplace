@@ -20,6 +20,13 @@ SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+# Explicit cookie SameSite (Lax is Django's default, but pin it so it can't drift).
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+# NOTE: a Content-Security-Policy is recommended but deferred — the app uses inline
+# scripts (Alpine/HTMX) and CDN assets (FullCalendar, Google Fonts), so a strict CSP
+# needs per-source allowlisting + nonces to avoid breaking pages. Track separately.
 
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])  # noqa: F405
 

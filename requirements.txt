@@ -1,19 +1,21 @@
-# Core
+# Core — upper bounds stop silent major bumps pulling an untested/yanked release.
+# (For full reproducibility, generate a hash-locked requirements.lock with
+#  `pip-compile --generate-hashes` and install with `--require-hashes`.)
 Django>=5.1,<5.2
-djangorestframework>=3.15
-django-allauth>=65.0
-django-environ>=0.11
-dj-database-url>=3.0
-Pillow>=10.0
-whitenoise>=6.6
+djangorestframework>=3.15,<3.16
+django-allauth>=65.0,<66
+django-environ>=0.11,<0.13
+dj-database-url>=3.0,<4
+Pillow>=10.4,<12          # 10.4+ closes several image-parsing CVEs (uploads are core)
+whitenoise>=6.6,<7
 
 # Production server + Postgres driver (used by Docker/Fly + CI)
-gunicorn>=22.0
-psycopg[binary]>=3.2
+gunicorn>=22.0,<24
+psycopg[binary]>=3.2,<4
 
 # Background jobs — run synchronously until REDIS_URL is set, then async + Beat.
-celery>=5.4
-redis>=5.0
+celery>=5.4,<6
+redis>=5.0,<6
 
 # Added when their phase lands:
 # stripe>=10.0                # real payments (set STRIPE_* env to activate)
