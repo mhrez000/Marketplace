@@ -7,7 +7,7 @@
 {% block og_image %}{% if profile.cover_image %}{{ SITE_URL }}{{ profile.cover_image.url }}{% else %}{{ SITE_URL }}{% static 'img/og-default.png' %}{% endif %}{% endblock %}
 
 {% block extra_head %}
-<script type="application/ld+json">
+<script type="application/ld+json" nonce="{{ request.csp_nonce }}">
 {
   "@context":"https://schema.org",
   "@type":"ProfessionalService",

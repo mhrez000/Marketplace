@@ -57,7 +57,7 @@
               <div><label class="label">Inclusions (one per line)</label><textarea name="inclusions" rows="3" class="input !rounded-2xl">{{ pkg.inclusions }}</textarea></div>
               <button class="btn-accent">Save package</button>
             </form>
-            <form method="post" class="mt-2" onsubmit="return confirm('Remove this package?')">
+            <form method="post" class="mt-2" data-confirm="Remove this package?">
               {% csrf_token %}<input type="hidden" name="action" value="delete_package"><input type="hidden" name="package_id" value="{{ pkg.pk }}">
               <button class="text-sm font-semibold text-red-500 hover:underline">Delete package</button>
             </form>

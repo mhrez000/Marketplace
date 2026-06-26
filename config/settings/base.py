@@ -79,6 +79,7 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "csp.middleware.CSPMiddleware",  # no-op unless a CONTENT_SECURITY_POLICY is set
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -206,6 +207,43 @@ REST_FRAMEWORK = {
     },
 }
 
+# ---------------------------------------------------------------------------
+# Content-Security-Policy (django-csp). Gated behind ENABLE_CSP so it ships dark
+# and is rolled out safely; defaults to REPORT-ONLY (observe violations in the
+# browser console, break nothing) until CSP_ENFORCE=true. Directives below are
+# the verified floor for this app's stack:
+#   - script-src needs 'unsafe-eval' because the bundled STANDARD Alpine.js build
+#     compiles directives via the AsyncFunction constructor. Dropping it means
+#     migrating to @alpinejs/csp + refactoring compound directives (future work).
+#   - style-src needs 'unsafe-inline' for data-driven inline styles (e.g. the
+#     analytics bar widths) that can't be hashed/nonced. Tailwind is external CSS.
+#   - Inline <script> blocks carry a per-request nonce ({{ request.csp_nonce }}).
+#   - cdn.jsdelivr.net is whitelisted for FullCalendar (calendar page only).
+# ---------------------------------------------------------------------------
+ENABLE_CSP = env.bool("ENABLE_CSP", default=False)
+CSP_ENFORCE = env.bool("CSP_ENFORCE", default=False)
+if ENABLE_CSP:
+    from csp.constants import NONCE, NONE, SELF, UNSAFE_EVAL, UNSAFE_INLINE
+
+    _CSP_POLICY = {
+        "DIRECTIVES": {
+            "default-src": [SELF],
+            "script-src": [SELF, NONCE, "https://cdn.jsdelivr.net", UNSAFE_EVAL],
+            "style-src": [SELF, UNSAFE_INLINE, "https://fonts.googleapis.com"],
+            "font-src": [SELF, "https://fonts.gstatic.com"],
+            "img-src": [SELF, "data:"],
+            "connect-src": [SELF],
+            "frame-ancestors": [NONE],
+            "base-uri": [SELF],
+            "form-action": [SELF],
+            "object-src": [NONE],
+        }
+    }
+    if CSP_ENFORCE:
+        CONTENT_SECURITY_POLICY = _CSP_POLICY
+    else:
+        CONTENT_SECURITY_POLICY_REPORT_ONLY = _CSP_POLICY
+
 # Brand — "Lens" is the working name; rename in one place.
 BRAND_NAME = env("BRAND_NAME", default="Lens")
 BRAND_TAGLINE = "Find & book Melbourne's best photographers and videographers."
@@ -225,6 +263,27 @@ STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", default="")
 # enable the Beat schedule.
 # ---------------------------------------------------------------------------
 REDIS_URL = env("REDIS_URL", default="")
+
+# Cache backend. A SHARED cache (Redis) is what makes DRF throttling and allauth's
+# login rate-limits hold across gunicorn workers — without it each worker counts
+# in its own LocMemCache, weakening the limits. Falls back to LocMemCache when no
+# REDIS_URL is set, so dev/test/single-process keeps working unchanged.
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+            "KEY_PREFIX": "lens",
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "lens-locmem",
+        }
+    }
+
 CELERY_BROKER_URL = REDIS_URL or "memory://"
 CELERY_RESULT_BACKEND = REDIS_URL or "cache+memory://"
 CELERY_TASK_ALWAYS_EAGER = not bool(REDIS_URL)   # run synchronously without a broker

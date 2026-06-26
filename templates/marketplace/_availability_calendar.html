@@ -40,7 +40,7 @@
   <p class="mt-4 text-xs text-navy-400">Tap a free (green) date to add it to your quote request — availability is confirmed when you book.</p>
 </div>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function () {
   var picks = document.querySelectorAll('[data-pick-date]');
   picks.forEach(function (btn) {

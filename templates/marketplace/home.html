@@ -7,7 +7,7 @@
 {% block og_description %}Compare verified Melbourne creatives, see transparent packages and real reviews, and book with protected payments.{% endblock %}
 
 {% block extra_head %}
-<script type="application/ld+json">
+<script type="application/ld+json" nonce="{{ request.csp_nonce }}">
 {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -18,7 +18,7 @@
   "description": "{{ BRAND_TAGLINE }}"
 }
 </script>
-<script type="application/ld+json">
+<script type="application/ld+json" nonce="{{ request.csp_nonce }}">
 {
   "@context": "https://schema.org",
   "@type": "WebSite",

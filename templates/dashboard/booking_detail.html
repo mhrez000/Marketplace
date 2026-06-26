@@ -160,11 +160,11 @@
             {% if c.is_paid %}<span class="text-xs font-semibold text-teal-600">✓ Paid ${{ c.fee|floatformat:2 }}</span>
             {% elif c.fee %}<form method="post"><input type="hidden" name="action" value="pay_collaborator"><input type="hidden" name="collab_id" value="{{ c.pk }}">{% csrf_token %}<button class="btn-accent !py-1 !px-3 text-xs">Pay ${{ c.fee|floatformat:0 }}</button></form>
             {% else %}<span class="text-xs text-navy-400">No fee set</span>{% endif %}
-            <form method="post" onsubmit="return confirm('Remove this collaborator?')"><input type="hidden" name="action" value="remove_collaborator"><input type="hidden" name="collab_id" value="{{ c.pk }}">{% csrf_token %}<button class="text-xs font-semibold text-red-500 hover:underline">Remove</button></form>
+            <form method="post" data-confirm="Remove this collaborator?"><input type="hidden" name="action" value="remove_collaborator"><input type="hidden" name="collab_id" value="{{ c.pk }}">{% csrf_token %}<button class="text-xs font-semibold text-red-500 hover:underline">Remove</button></form>
           </div>
           {% elif c.status == 'invited' %}
           <div class="mt-2 border-t border-navy-100 pt-2 text-right">
-            <form method="post" onsubmit="return confirm('Withdraw this invite?')"><input type="hidden" name="action" value="remove_collaborator"><input type="hidden" name="collab_id" value="{{ c.pk }}">{% csrf_token %}<button class="text-xs font-semibold text-red-500 hover:underline">Withdraw</button></form>
+            <form method="post" data-confirm="Withdraw this invite?"><input type="hidden" name="action" value="remove_collaborator"><input type="hidden" name="collab_id" value="{{ c.pk }}">{% csrf_token %}<button class="text-xs font-semibold text-red-500 hover:underline">Withdraw</button></form>
           </div>
           {% endif %}
         </div>

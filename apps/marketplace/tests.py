@@ -101,7 +101,8 @@ class SeoTests(TestCase):
                               rating=5, title="Amazing", body='Best day ever — "quotes" & symbols')
 
     def _jsonld(self, html):
-        return re.findall(r'<script type="application/ld\+json">(.*?)</script>', html, re.S)
+        # tolerate extra attrs on the tag (e.g. a CSP nonce)
+        return re.findall(r'<script type="application/ld\+json"[^>]*>(.*?)</script>', html, re.S)
 
     def test_home_has_canonical_og_and_schema(self):
         html = self.client.get("/", SERVER_NAME="localhost").content.decode()
@@ -180,3 +181,27 @@ class SeoGeoTests(TestCase):
     def test_sitemap_and_robots(self):
         self.assertEqual(self.client.get("/sitemap.xml", SERVER_NAME="localhost").status_code, 200)
         self.assertEqual(self.client.get("/robots.txt", SERVER_NAME="localhost").status_code, 200)
+
+
+class CSPTests(TestCase):
+    """CSP ships dark (flag-gated) and report-only first. Verify the header +
+    nonce wiring works, and that nothing is emitted when unconfigured."""
+
+    def _policy(self):
+        from csp.constants import NONCE, SELF
+        return {"DIRECTIVES": {"default-src": [SELF], "script-src": [SELF, NONCE]}}
+
+    def test_report_only_header_and_nonce_present(self):
+        from django.test import override_settings
+        with override_settings(CONTENT_SECURITY_POLICY_REPORT_ONLY=self._policy()):
+            r = self.client.get("/", SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 200)
+        header = r.headers.get("Content-Security-Policy-Report-Only", "")
+        self.assertIn("script-src", header)
+        self.assertIn("'nonce-", header)                 # a per-request nonce was injected
+        self.assertIn(b'nonce="', r.content)             # ...and rendered onto an inline <script>
+
+    def test_no_csp_header_when_unconfigured(self):
+        r = self.client.get("/", SERVER_NAME="localhost")
+        self.assertNotIn("Content-Security-Policy", r.headers)
+        self.assertNotIn("Content-Security-Policy-Report-Only", r.headers)

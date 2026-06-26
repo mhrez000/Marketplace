@@ -7,7 +7,7 @@
 {% block og_description %}Compare verified {{ svc.noun }}s in {{ sub.name }} on {{ BRAND_NAME }} — transparent packages, real reviews and protected payments.{% endblock %}
 
 {% block extra_head %}
-<script type="application/ld+json">
+<script type="application/ld+json" nonce="{{ request.csp_nonce }}">
 {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
@@ -18,7 +18,7 @@
   ]
 }
 </script>
-<script type="application/ld+json">
+<script type="application/ld+json" nonce="{{ request.csp_nonce }}">
 {
   "@context":"https://schema.org","@type":"FAQPage",
   "mainEntity":[

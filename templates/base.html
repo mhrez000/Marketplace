@@ -38,5 +38,14 @@
 <body class="h-full min-h-full">
   {% block body %}{% endblock %}
   {% block extra_body %}{% endblock %}
+  {# CSP-safe replacement for inline onsubmit="return confirm(...)": a delegated
+     handler (capture phase, so it catches dynamically-injected forms too). Add
+     data-confirm="…" to any form that needs a confirmation prompt. #}
+  <script nonce="{{ request.csp_nonce }}">
+    document.addEventListener('submit', function (e) {
+      var msg = e.target && e.target.getAttribute && e.target.getAttribute('data-confirm');
+      if (msg && !window.confirm(msg)) { e.preventDefault(); e.stopPropagation(); }
+    }, true);
+  </script>
 </body>
 </html>
