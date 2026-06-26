@@ -668,7 +668,10 @@ def broadcast(request):
 def notifications_read(request):
     """Mark all of the current user's notifications read."""
     request.user.notifications.filter(is_read=False).update(is_read=True)
-    return redirect(request.POST.get("next") or request.META.get("HTTP_REFERER") or "dashboard:overview")
+    # Only honour an on-site `next`; an attacker-controlled next/Referer must not
+    # bounce the user off-site (open redirect → phishing).
+    from apps.core.http import safe_redirect
+    return safe_redirect(request, request.POST.get("next"), "dashboard:overview")
 
 
 @login_required

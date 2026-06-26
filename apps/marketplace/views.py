@@ -116,7 +116,9 @@ def toggle_favourite(request, slug):
     else:
         fav.delete()
         messages.info(request, f"Removed {workspace.business_name} from favourites.")
-    return redirect(request.POST.get("next") or reverse("marketplace:profile", args=[slug]))
+    from apps.core.http import safe_redirect
+    return safe_redirect(request, request.POST.get("next"),
+                         reverse("marketplace:profile", args=[slug]))
 
 
 def enquire(request, slug):

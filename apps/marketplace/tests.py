@@ -33,6 +33,17 @@ class FavouriteTests(TestCase):
         self.assertEqual(r.status_code, 302)  # redirected to login
         self.assertFalse(Favourite.objects.exists())
 
+    def test_favourite_next_open_redirect_is_blocked(self):
+        """An off-site `next` must not bounce the user to an attacker host."""
+        self.client.force_login(self.client_user)
+        url = f"/p/{self.ws.slug}/favourite/"
+        r = self.client.post(url, {"next": "https://evil.example/phish"}, SERVER_NAME="localhost")
+        self.assertEqual(r.status_code, 302)
+        self.assertNotIn("evil.example", r["Location"])      # external target rejected
+        # an on-site path is still honoured
+        r2 = self.client.post(url, {"next": "/app/"}, SERVER_NAME="localhost")
+        self.assertEqual(r2["Location"], "/app/")
+
 
 class PublicProfileVisibilityTests(TestCase):
     """The 'View public page' link must reach the profile, not bounce to a 404.
